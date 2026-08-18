@@ -153,7 +153,7 @@ export default function App() {
       {/* Ambient background soft glow */}
       <div className="absolute top-[-100px] left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-b from-indigo-100/30 via-sky-50/20 to-transparent rounded-full blur-3xl z-0 pointer-events-none" />
       
-      <div className="relative z-10 w-full">
+      <div className="relative z-10 w-full pb-12">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentView}

@@ -487,7 +487,7 @@ export default function Flashcards({ words, onBack }: FlashcardsProps) {
               margin-top: 10mm;
               margin-left: 10mm;
               margin-right: 10mm;
-              margin-bottom: 0.2cm;
+              margin-bottom: 10mm;
             }
             .no-print { display: none !important; }
             body { 

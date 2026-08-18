@@ -1193,7 +1193,7 @@ export default function Quiz({ words, onBack }: QuizProps) {
                   {/* White Pill Container */}
                   <div className={`w-full bg-white rounded-3xl sm:rounded-[40px] px-8 py-6 sm:px-16 sm:py-8 border-4 border-purple-200/90 shadow-2xl flex items-center justify-center min-h-[100px] sm:min-h-[120px]`}>
                     <h2 className={`font-extrabold text-purple-950 text-center leading-relaxed select-text tracking-wide ${
-                      isFullScreen ? "text-xl sm:text-2xl md:text-3xl lg:text-4xl" : "text-base sm:text-lg md:text-xl lg:text-2xl"
+                      isFullScreen ? "text-2xl sm:text-3xl md:text-4xl lg:text-5xl" : "text-xl sm:text-2xl md:text-3xl lg:text-4xl"
                     }`}>
                       {currentQuestion.question}
                     </h2>
@@ -1322,7 +1322,7 @@ export default function Quiz({ words, onBack }: QuizProps) {
                               {/* Right White Content Area for Answer Text */}
                               <div className="flex-1 px-4 sm:px-6 py-3.5 flex items-center justify-between bg-white/90">
                                 <span className={`skew-x-12 leading-relaxed select-none text-left flex-1 font-extrabold ${
-                                  isFullScreen ? 'text-lg sm:text-xl' : 'text-sm sm:text-base'
+                                  isFullScreen ? 'text-2xl sm:text-3xl' : 'text-xl sm:text-2xl'
                                 } ${
                                   showSuccess
                                     ? 'text-emerald-800'

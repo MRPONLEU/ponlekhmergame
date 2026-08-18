@@ -1170,7 +1170,7 @@ export default function TeamCards({ words, onBack }: TeamCardsProps) {
                     <div className="w-full max-w-4xl bg-stone-50/70 rounded-3xl py-12 px-6 sm:py-16 sm:px-10 border-2 border-stone-200/80 shadow-xs flex items-center justify-center min-h-[220px] sm:min-h-[280px]">
                       {(() => {
                         const wordText = selectedCard.wordItem?.word || '';
-                        const fontSizeClass = wordText.length > 30 ? "text-3xl sm:text-4xl md:text-5xl lg:text-6xl" : "text-5xl sm:text-6xl md:text-7xl lg:text-8xl";
+                        const fontSizeClass = wordText.length > 30 ? "text-2xl sm:text-3xl md:text-4xl" : "text-4xl sm:text-5xl md:text-6xl";
                         return (
                           <h2 className={`${fontSizeClass} font-black text-stone-900 tracking-wide font-sans select-text text-center break-words leading-tight`}>
                             {wordText}
@@ -1214,7 +1214,7 @@ export default function TeamCards({ words, onBack }: TeamCardsProps) {
                       {(() => {
                         const rawSentence = selectedCard.wordItem?.word || '';
                         const formattedSentence = formatSentenceText(rawSentence);
-                        const fontSizeClass = "text-3xl sm:text-4xl md:text-5xl lg:text-5xl";
+                        const fontSizeClass = rawSentence.length > 50 ? "text-2xl sm:text-3xl md:text-4xl" : "text-4xl sm:text-5xl md:text-6xl";
                         return (
                           <h2 className={`${fontSizeClass} font-black text-slate-900 tracking-wide font-sans select-text text-center break-words leading-relaxed py-2`}>
                             {formattedSentence}

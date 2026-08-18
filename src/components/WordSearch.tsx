@@ -454,7 +454,7 @@ export default function WordSearch({ words, onBack }: WordSearchProps) {
                 margin-top: 10mm;
                 margin-left: 10mm;
                 margin-right: 10mm;
-                margin-bottom: 0.2cm;
+                margin-bottom: 10mm;
               }
               body {
                 background-color: #ffffff !important;
