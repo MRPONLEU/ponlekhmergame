@@ -27,6 +27,7 @@ if (apiKey) {
 }
 
 app.use(express.json());
+app.use(express.static(path.join(process.cwd(), "public")));
 
 // API: Generate Word list based on a topic or query
 app.post("/api/ai/generate-words", async (req, res) => {

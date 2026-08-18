@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { playClickSound } from '../utils/audio';
+import appLogo from '../assets/app-logo.jpg';
 
 interface DashboardProps {
   onNavigate: (view: ViewState) => void;
@@ -213,7 +214,7 @@ export default function Dashboard({ onNavigate, wordCount }: DashboardProps) {
           <div className="relative group">
             <div className="absolute -inset-1 bg-gradient-to-r from-violet-600 via-indigo-500 to-amber-400 rounded-3xl blur-lg opacity-30 group-hover:opacity-60 transition duration-500"></div>
             <img 
-              src="/app-icon.jpg" 
+              src={appLogo} 
               alt="Logo ល្បែងសិក្សា" 
               referrerPolicy="no-referrer"
               className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-3xl shadow-xl object-cover border-2 border-white/80" 
