@@ -1,0 +1,32 @@
+@import url('https://fonts.googleapis.com/css2?family=Battambang:wght@400;700;900&family=Kantumruy+Pro:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Battambang", "Kantumruy Pro", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-sage: #16A34A; /* Bold, vibrant green */
+  --color-clay: #F97316; /* Energetic, bright orange */
+  --color-sand: #EAB308; /* Sunny, vibrant yellow */
+  --color-stone-bg: #FCFAF7; /* Clean, warm cream background */
+  --color-leaf-1: #D1FAE5; /* Soft, vibrant green bubble */
+  --color-leaf-2: #FFEDD5; /* Soft, vibrant peach bubble */
+  --color-charcoal: #1E293B; /* High-contrast, clean slate */
+  --color-soft-gray: #475569; /* Clear gray for subtitles */
+  --color-border-beige: #E2E8F0; /* Clean, modern border */
+}
+
+body {
+  background-color: var(--color-stone-bg);
+  color: var(--color-charcoal);
+  font-family: "Battambang", "Kantumruy Pro", "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+.soft-shadow {
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.02);
+}
+
+@font-face {
+  font-family: 'Kh-MPS-Temple';
+  src: url('/fonts/Kh-MPS%20Temple.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}

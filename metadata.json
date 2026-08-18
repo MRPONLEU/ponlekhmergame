@@ -1,0 +1,8 @@
+{
+  "name": "ល្បែងសិក្សា",
+  "description": "កម្មវិធីល្បែងសិក្សាកុមារ៖ ផ្គុំពាក្យ ស្វែងរកពាក្យ កងបង្វិលសំណួរ បណ្ណពាក្យ A4 និងសំណួរពហុជម្រើស ដោយមានជំនួយពី AI សម្រាប់គ្រូនិងសិស្ស",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
