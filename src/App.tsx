@@ -11,6 +11,7 @@ import Spinner from './components/Spinner';
 import Flashcards from './components/Flashcards';
 import Quiz from './components/Quiz';
 import MathFinger from './components/MathFinger';
+import MysteryBox from './components/MysteryBox';
 import { AnimatePresence, motion } from 'motion/react';
 
 import { playClickSound } from './utils/audio';
@@ -135,6 +136,13 @@ export default function App() {
       case 'math-finger':
         return (
           <MathFinger 
+            onBack={() => handleNavigate('dashboard')} 
+          />
+        );
+      case 'mystery-box':
+        return (
+          <MysteryBox 
+            words={words} 
             onBack={() => handleNavigate('dashboard')} 
           />
         );

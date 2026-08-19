@@ -23,4 +23,5 @@ export type ViewState =
   | 'spinner'
   | 'flashcards'
   | 'quiz'
-  | 'math-finger';
+  | 'math-finger'
+  | 'mystery-box';

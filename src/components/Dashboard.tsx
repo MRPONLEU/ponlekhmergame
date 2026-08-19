@@ -13,15 +13,10 @@ import {
   Minimize, 
   Calculator, 
   Gift,
-  Gamepad2,
-  Download,
-  Smartphone,
-  Check,
-  X
+  Gamepad2
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { playClickSound } from '../utils/audio';
-import appLogo from '../assets/app-logo.jpg';
 
 interface DashboardProps {
   onNavigate: (view: ViewState) => void;
@@ -31,46 +26,6 @@ interface DashboardProps {
 export default function Dashboard({ onNavigate, wordCount }: DashboardProps) {
   const [soundEnabled, setSoundEnabled] = React.useState(true);
   const [isFullscreen, setIsFullscreen] = React.useState(false);
-  const [deferredPrompt, setDeferredPrompt] = React.useState<any>(null);
-  const [isInstalled, setIsInstalled] = React.useState(false);
-  const [showInstallGuide, setShowInstallGuide] = React.useState(false);
-
-  React.useEffect(() => {
-    // Check if already in standalone mode (installed PWA)
-    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
-      setIsInstalled(true);
-    }
-
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    window.addEventListener('appinstalled', () => {
-      setIsInstalled(true);
-      setDeferredPrompt(null);
-    });
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    };
-  }, []);
-
-  const handleInstallClick = async () => {
-    playClickSound();
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setIsInstalled(true);
-      }
-      setDeferredPrompt(null);
-    } else {
-      setShowInstallGuide(true);
-    }
-  };
 
   const toggleSound = () => {
     setSoundEnabled(!soundEnabled);
@@ -155,10 +110,18 @@ export default function Dashboard({ onNavigate, wordCount }: DashboardProps) {
       badge: 'ថ្មី (Math)'
     },
     {
+      id: 'mystery-box' as ViewState,
+      title: 'បើកប្រអប់សំណាង',
+      subtitle: 'បើកប្រអប់អំណោយអមដោយចលនា និងសំឡេង ដើម្បីបង្ហាញពាក្យអាន',
+      icon: Gift,
+      iconBoxBg: 'bg-purple-100 text-purple-600',
+      badge: 'ថ្មី (3D Box)'
+    },
+    {
       id: 'lucky-draw' as ViewState,
       title: 'ចាប់ពាក្យសំណាង',
       subtitle: 'ចាប់ពាក្យសំណាងរត់ឡើងចុះដូចម៉ាស៊ីន Lucky Draw',
-      icon: Gift,
+      icon: Sparkles,
       iconBoxBg: 'bg-sky-50 text-sky-500',
     },
   ];
@@ -172,19 +135,6 @@ export default function Dashboard({ onNavigate, wordCount }: DashboardProps) {
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 font-sans">
       {/* Top Action Buttons */}
       <div className="absolute top-6 right-6 flex items-center gap-2 z-20">
-        {!isInstalled && (
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleInstallClick}
-            id="btn-install-app"
-            className="flex items-center gap-2 px-3.5 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-full shadow-md hover:shadow-indigo-500/25 transition-all text-xs sm:text-sm font-bold cursor-pointer"
-            title="ដំឡើងកម្មវិធីលើឧបករណ៍របស់អ្នក"
-          >
-            <Download size={16} />
-            <span>ដំឡើង App</span>
-          </motion.button>
-        )}
         <button 
           onClick={toggleFullscreen}
           id="btn-fullscreen-toggle"
@@ -204,24 +154,6 @@ export default function Dashboard({ onNavigate, wordCount }: DashboardProps) {
       </div>
 
       <div className="max-w-5xl mx-auto flex flex-col items-center">
-        {/* App Logo Icon */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4 }}
-          className="mb-4"
-        >
-          <div className="relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-violet-600 via-indigo-500 to-amber-400 rounded-3xl blur-lg opacity-30 group-hover:opacity-60 transition duration-500"></div>
-            <img 
-              src={appLogo} 
-              alt="Logo ល្បែងសិក្សា" 
-              referrerPolicy="no-referrer"
-              className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-3xl shadow-xl object-cover border-2 border-white/80" 
-            />
-          </div>
-        </motion.div>
-
         {/* Playful Tag */}
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
@@ -297,57 +229,6 @@ export default function Dashboard({ onNavigate, wordCount }: DashboardProps) {
           ល្បែងសិក្សាខ្មែរ និងឧបករណ៍បង្រៀន © 2026
         </div>
       </div>
-
-      {/* PWA Install Instructions Modal */}
-      <AnimatePresence>
-        {showInstallGuide && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative border border-slate-100"
-            >
-              <button
-                onClick={() => setShowInstallGuide(false)}
-                className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-700 rounded-full hover:bg-slate-100 transition-colors"
-              >
-                <X size={20} />
-              </button>
-
-              <div className="flex flex-col items-center text-center">
-                <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 mb-4 shadow-xs">
-                  <Smartphone size={32} />
-                </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">
-                  របៀបដំឡើងកម្មវិធី (Install App)
-                </h3>
-                <p className="text-sm text-slate-500 mb-6 leading-relaxed">
-                  អ្នកអាចដំឡើងកម្មវិធីនេះដើម្បីបើកប្រើប្រាស់បានលឿនដូច App ទូរសព្ទ ឬកុំព្យូទ័រ៖
-                </p>
-
-                <div className="w-full space-y-3 text-left mb-6 text-sm text-slate-700 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                  <div className="flex items-start gap-3">
-                    <span className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">1</span>
-                    <span><strong>លើ Chrome / Edge:</strong> ចុចលើសញ្ញា <Download size={14} className="inline mx-1 text-indigo-600" /> នៅលើរបារអាសយដ្ឋាន (Address bar) ឬចុច Menu ⋮ រួចជ្រើសយក <em>"Install App"</em></span>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <span className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">2</span>
-                    <span><strong>លើ Safari (iPhone/iPad):</strong> ចុចប៊ូតុង Share (ចែករំលែក) រួចអូសចុះក្រោមជ្រើសយក <em>"Add to Home Screen"</em></span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setShowInstallGuide(false)}
-                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all cursor-pointer"
-                >
-                  យល់ព្រម
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
