@@ -1,4 +1,5 @@
 import React from 'react';
+import * as XLSX from 'xlsx';
 import { WordItem } from '../types';
 import { TOPIC_PRESETS } from '../data';
 import { 
@@ -270,71 +271,107 @@ export default function AddWords({ words, onAddWord, onRemoveWord, onSetWords, o
     if (!file) return;
 
     playClickSound();
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target?.result as string;
-        if (!text) return;
+    const fileName = file.name.toLowerCase();
 
-        const lines = text.split(/\r?\n/);
-        const newWords: WordItem[] = [];
+    const processWordRows = (rows: string[][]) => {
+      if (!rows || rows.length === 0) {
+        throw new Error('រកមិនឃើញទិន្នន័យពាក្យក្នុងឯកសារទេ។');
+      }
 
-        const startIndex = lines[0].includes('ពាក្យ') || lines[0].includes('word') ? 1 : 0;
+      const startIndex = (rows[0] && (String(rows[0][0]).includes('ពាក្យ') || String(rows[0][0]).includes('word'))) ? 1 : 0;
+      const newWords: WordItem[] = [];
 
-        for (let i = startIndex; i < lines.length; i++) {
-          const line = lines[i].trim();
-          if (!line) continue;
+      for (let i = startIndex; i < rows.length; i++) {
+        const rowCols = rows[i];
+        if (!rowCols || rowCols.length === 0 || !String(rowCols[0] || '').trim()) continue;
 
-          let rowCols = [];
-          let inQuotes = false;
-          let currentCol = '';
-          for (let charIndex = 0; charIndex < line.length; charIndex++) {
-            const char = line[charIndex];
-            if (char === '"') {
-              inQuotes = !inQuotes;
-            } else if (char === ',' && !inQuotes) {
-              rowCols.push(currentCol.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
-              currentCol = '';
-            } else {
-              currentCol += char;
-            }
-          }
-          rowCols.push(currentCol.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
+        const wordVal = String(rowCols[0]).trim();
+        const typeVal = String(rowCols[1] || 'អំណាន').trim();
+        const partsVal = rowCols[2] ? String(rowCols[2]).split(',').map(p => p.trim()).filter(Boolean) : splitKhmerWord(wordVal);
+        const exampleVal = String(rowCols[3] || `ខ្ញុំស្គាល់ពាក្យ ${wordVal}។`).trim();
 
-          if (rowCols.length > 0 && rowCols[0]) {
-            const wordVal = rowCols[0];
-            const typeVal = rowCols[1] || 'អំណាន';
-            const partsVal = rowCols[2] ? rowCols[2].split(',').map(p => p.trim()).filter(Boolean) : splitKhmerWord(wordVal);
-            const exampleVal = rowCols[3] || `ខ្ញុំស្គាល់ពាក្យ ${wordVal}។`;
+        newWords.push({
+          word: wordVal,
+          wordType: typeVal,
+          parts: partsVal,
+          definition: exampleVal,
+          example: exampleVal
+        });
+      }
 
-            newWords.push({
-              word: wordVal,
-              wordType: typeVal,
-              parts: partsVal,
-              definition: exampleVal,
-              example: exampleVal
-            });
-          }
-        }
-
-        if (newWords.length > 0) {
-          const combined = [...newWords, ...words];
-          onSetWords(combined);
-          playSuccessSound();
-          setSuccessMessage(`បាននាំចូលពាក្យចំនួន ${newWords.length} ដោយជោគជ័យ!`);
-          setTimeout(() => setSuccessMessage(null), 4000);
-        } else {
-          throw new Error('រកមិនឃើញទិន្នន័យពាក្យក្នុងឯកសារទេ។');
-        }
-      } catch (err: any) {
-        console.error(err);
-        playFailSound();
-        setAiError(err.message || 'បរាជ័យក្នុងការអានឯកសារ Excel/CSV');
-      } finally {
-        if (fileInputRef.current) fileInputRef.current.value = '';
+      if (newWords.length > 0) {
+        const combined = [...newWords, ...words];
+        onSetWords(combined);
+        playSuccessSound();
+        setSuccessMessage(`បាននាំចូលពាក្យចំនួន ${newWords.length} ដោយជោគជ័យ!`);
+        setTimeout(() => setSuccessMessage(null), 4000);
+      } else {
+        throw new Error('រកមិនឃើញទិន្នន័យពាក្យក្នុងឯកសារទេ។');
       }
     };
-    reader.readAsText(file, 'utf-8');
+
+    if (fileName.endsWith('.csv')) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const text = event.target?.result as string;
+          if (!text) return;
+          let parsed: string[][] = [];
+          try {
+            const workbook = XLSX.read(text, { type: 'string' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonRows = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1, raw: false, defval: '' });
+            parsed = jsonRows.map(row => (Array.isArray(row) ? row.map(c => String(c || '')) : []));
+          } catch {
+            const lines = text.split(/\r?\n/);
+            parsed = lines.map(line => {
+              let cols = [];
+              let inQuotes = false;
+              let currentCol = '';
+              for (let cIdx = 0; cIdx < line.length; cIdx++) {
+                const char = line[cIdx];
+                if (char === '"') inQuotes = !inQuotes;
+                else if (char === ',' && !inQuotes) {
+                  cols.push(currentCol.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
+                  currentCol = '';
+                } else {
+                  currentCol += char;
+                }
+              }
+              cols.push(currentCol.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
+              return cols;
+            });
+          }
+          processWordRows(parsed);
+        } catch (err: any) {
+          console.error(err);
+          playFailSound();
+          setAiError(err.message || 'បរាជ័យក្នុងការអានឯកសារ CSV');
+        } finally {
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+      };
+      reader.readAsText(file, 'utf-8');
+    } else {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const arrayBuffer = event.target?.result as ArrayBuffer;
+          const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonRows = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1, raw: false, defval: '' });
+          const parsed = jsonRows.map(row => (Array.isArray(row) ? row.map(c => String(c || '')) : []));
+          processWordRows(parsed);
+        } catch (err: any) {
+          console.error(err);
+          playFailSound();
+          setAiError(err.message || 'បរាជ័យក្នុងការអានឯកសារ Excel (.xlsx / .xls)');
+        } finally {
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
   };
 
   const handleResetDefault = () => {

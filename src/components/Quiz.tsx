@@ -1,4 +1,5 @@
 import React from 'react';
+import * as XLSX from 'xlsx';
 import { WordItem, QuizQuestion } from '../types';
 import { DEFAULT_QUIZ } from '../data';
 import { 
@@ -453,6 +454,7 @@ export default function Quiz({ words, onBack }: QuizProps) {
   const handleExportCSV = () => {
     playClickSound();
     try {
+      const headers = ["ល.រ", "សំណួរ", "ចម្លើយ ក", "ចម្លើយ ខ", "ចម្លើយ គ", "ចម្លើយ ឃ", "ចម្លើយត្រឹមត្រូវ", "ការពន្យល់"];
       const dataRows = questions.map((q, idx) => [
         getKhmerNumber(idx + 1),
         q.question,
@@ -464,16 +466,49 @@ export default function Quiz({ words, onBack }: QuizProps) {
         q.explanation || ''
       ]);
 
-      const xlsContent = generateXLSContent(dataRows);
-      const blob = new Blob(["\uFEFF" + xlsContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+      const csvRows = [headers, ...dataRows].map(row => 
+        row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+      ).join('\n');
+
+      const blob = new Blob(["\uFEFF" + csvRows], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.setAttribute("href", url);
-      link.setAttribute("download", `khmer_quiz_questions_${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}.xls`);
+      link.setAttribute("download", `khmer_quiz_questions_${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      setTeacherSuccess('បានទាញយកសំណួរទាំងអស់ជាឯកសារ Excel រួចរាល់!');
+      setTeacherSuccess('បានទាញយកសំណួរទាំងអស់ជាឯកសារ CSV រួចរាល់!');
+      playSuccessSound();
+      setTimeout(() => setTeacherSuccess(null), 3000);
+    } catch (e) {
+      console.error(e);
+      setTeacherError('មានបញ្ហាក្នុងការទាញយកសំណួរ!');
+      playFailSound();
+    }
+  };
+
+  const handleExportXLSX = () => {
+    playClickSound();
+    try {
+      const headers = ["ល.រ", "សំណួរ", "ចម្លើយ ក", "ចម្លើយ ខ", "ចម្លើយ គ", "ចម្លើយ ឃ", "ចម្លើយត្រឹមត្រូវ", "ការពន្យល់"];
+      const dataRows = questions.map((q, idx) => [
+        getKhmerNumber(idx + 1),
+        q.question,
+        q.options[0] || '',
+        q.options[1] || '',
+        q.options[2] || '',
+        q.options[3] || '',
+        khmerPrefixes[q.answerIndex] || 'ក',
+        q.explanation || ''
+      ]);
+
+      const worksheet = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "កម្រងសំណួរខ្មែរ");
+      XLSX.writeFile(workbook, `khmer_quiz_questions_${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}.xlsx`);
+
+      setTeacherSuccess('បានទាញយកសំណួរទាំងអស់ជាឯកសារ Excel (.xlsx) រួចរាល់!');
       playSuccessSound();
       setTimeout(() => setTeacherSuccess(null), 3000);
     } catch (e) {
@@ -486,6 +521,7 @@ export default function Quiz({ words, onBack }: QuizProps) {
   const handleDownloadTemplate = () => {
     playClickSound();
     try {
+      const headers = ["ល.រ", "សំណួរ", "ចម្លើយ ក", "ចម្លើយ ខ", "ចម្លើយ គ", "ចម្លើយ ឃ", "ចម្លើយត្រឹមត្រូវ", "ការពន្យល់"];
       const templateData = [
         [
           "១",
@@ -509,16 +545,19 @@ export default function Quiz({ words, onBack }: QuizProps) {
         ]
       ];
 
-      const xlsContent = generateXLSContent(templateData);
-      const blob = new Blob(["\uFEFF" + xlsContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+      const csvRows = [headers, ...templateData].map(row => 
+        row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+      ).join('\n');
+
+      const blob = new Blob(["\uFEFF" + csvRows], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.setAttribute("href", url);
-      link.setAttribute("download", "khmer_quiz_template.xls");
+      link.setAttribute("download", "khmer_quiz_template.csv");
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      setTeacherSuccess('បានទាញយកគំរូឯកសារ Excel រួចរាល់!');
+      setTeacherSuccess('បានទាញយកគំរូឯកសារ CSV រួចរាល់!');
       playSuccessSound();
       setTimeout(() => setTeacherSuccess(null), 3000);
     } catch (e) {
@@ -552,7 +591,7 @@ export default function Quiz({ words, onBack }: QuizProps) {
       } else {
         if (char === '"') {
           inQuotes = true;
-        } else if (char === ',') {
+        } else if (char === ',' || char === ';') {
           row.push(cell);
           cell = '';
         } else if (char === '\n') {
@@ -575,154 +614,184 @@ export default function Quiz({ words, onBack }: QuizProps) {
   const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     playClickSound();
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target?.result as string;
-        if (!text) {
-          setTeacherError('ឯកសារគ្មានទិន្នន័យទេ!');
-          playFailSound();
-          return;
-        }
-        
-        let parsed: string[][] = [];
-        const trimmedText = text.trim();
-        if (trimmedText.startsWith('<html') || trimmedText.includes('<table') || trimmedText.includes('<xml')) {
-          // Parse XLS HTML table format
-          const domParser = new DOMParser();
-          const doc = domParser.parseFromString(text, 'text/html');
-          const trs = doc.querySelectorAll('tr');
-          trs.forEach(tr => {
-            const rowData: string[] = [];
-            const cells = tr.querySelectorAll('th, td');
-            cells.forEach(cell => {
-              rowData.push(cell.textContent?.trim() || '');
-            });
-            if (rowData.length > 0) {
-              parsed.push(rowData);
-            }
-          });
-        } else {
-          // Standard CSV parser
-          parsed = parseCSV(text);
-        }
-        
-        if (parsed.length <= 1) {
-          setTeacherError('ឯកសារគ្មានទិន្នន័យសំណួរទេ!');
-          playFailSound();
-          return;
-        }
-        
-        let startIdx = 0;
-        const firstRow = parsed[0];
-        const isHeader = firstRow.some(cell => 
-          cell.includes('សំណួរ') || 
-          cell.includes('Question') || 
-          cell.includes('ជម្រើស') || 
-          cell.includes('Option') ||
-          cell.includes('ល.រ')
-        );
-        if (isHeader) {
-          startIdx = 1;
-        }
-        
-        const importedQuestions: QuizQuestion[] = [];
-        const hasNoCol = isHeader && (firstRow[0]?.includes('ល.រ') || firstRow[0]?.includes('ល.រ.'));
-        
-        for (let i = startIdx; i < parsed.length; i++) {
-          const row = parsed[i];
-          if (row.length === 0 || (row.length === 1 && !row[0].trim())) {
-            continue;
-          }
-          
-          let questionText = '';
-          let opt1 = '';
-          let opt2 = '';
-          let opt3 = '';
-          let opt4 = '';
-          let rawAnsIdx = '';
-          let explanation = '';
-          
-          if (hasNoCol) {
-            questionText = row[1]?.trim() || '';
-            opt1 = row[2]?.trim() || '';
-            opt2 = row[3]?.trim() || '';
-            opt3 = row[4]?.trim() || '';
-            opt4 = row[5]?.trim() || '';
-            rawAnsIdx = row[6]?.trim() || '';
-            explanation = row[7]?.trim() || '';
-          } else {
-            questionText = row[0]?.trim() || '';
-            opt1 = row[1]?.trim() || '';
-            opt2 = row[2]?.trim() || '';
-            opt3 = row[3]?.trim() || '';
-            opt4 = row[4]?.trim() || '';
-            rawAnsIdx = row[5]?.trim() || '';
-            explanation = row[6]?.trim() || '';
-          }
-          
-          if (!questionText) {
-            continue;
-          }
-          
-          if (!opt1 || !opt2) {
-            continue;
-          }
-          
-          const options = [opt1, opt2, opt3 || 'ជម្រើសគ', opt4 || 'ជម្រើសឃ'];
-          
-          let answerIndex = 0;
-          if (rawAnsIdx) {
-            const cleanRaw = rawAnsIdx.toLowerCase().trim();
-            if (cleanRaw.includes('ក') || cleanRaw === 'a') answerIndex = 0;
-            else if (cleanRaw.includes('ខ') || cleanRaw === 'b') answerIndex = 1;
-            else if (cleanRaw.includes('គ') || cleanRaw === 'c') answerIndex = 2;
-            else if (cleanRaw.includes('ឃ') || cleanRaw === 'd') answerIndex = 3;
-            else {
-              const convertedRaw = khmerToEnglishNumber(cleanRaw);
-              const parsedIdx = parseInt(convertedRaw, 10);
-              if (!isNaN(parsedIdx) && parsedIdx >= 1 && parsedIdx <= 4) {
-                answerIndex = parsedIdx - 1;
-              }
-            }
-          }
-          
-          importedQuestions.push({
-            question: questionText,
-            options,
-            answerIndex,
-            explanation: explanation || `ចម្លើយត្រឹមត្រូវគឺ ៖ ${options[answerIndex]}`
-          });
-        }
-        
-        if (importedQuestions.length === 0) {
-          setTeacherError('មិនអាចស្វែងរកទិន្នន័យសំណួរត្រឹមត្រូវក្នុងឯកសារទេ! សូមពិនិត្យមើលគំរូទ្រង់ទ្រាយឯកសារ។');
-          playFailSound();
-          return;
-        }
-        
-        const shouldReplace = window.confirm(`បានរកឃើញសំណួរចំនួន ${importedQuestions.length}។ តើអ្នកចង់ជំនួសសំណួរចាស់ៗទាំងអស់ (ចុច យល់ព្រម) ឬចង់បន្ថែមចូលទៅក្នុងសំណួរដែលមានស្រាប់ (ចុច បោះបង់)?`);
-        
-        if (shouldReplace) {
-          setQuestions(importedQuestions);
-          setCurrentQIndex(0);
-          setTeacherSuccess(`បានជំនួសសំណួរទាំងអស់ដោយសំណួរថ្មីចំនួន ${importedQuestions.length} ដោយជោគជ័យ!`);
-        } else {
-          setQuestions(prev => [...prev, ...importedQuestions]);
-          setTeacherSuccess(`បានបន្ថែមសំណួរថ្មីចំនួន ${importedQuestions.length} ចូលក្នុងប្រព័ន្ធដោយជោគជ័យ!`);
-        }
-        
-        playSuccessSound();
-        e.target.value = '';
-      } catch (err) {
-        console.error(err);
-        setTeacherError('មានបញ្ហាក្នុងការអានឯកសារនេះ!');
+    const fileName = file.name.toLowerCase();
+
+    const processParsedRows = (parsed: string[][]) => {
+      if (!parsed || parsed.length <= 1) {
+        setTeacherError('ឯកសារគ្មានទិន្នន័យសំណួរទេ!');
         playFailSound();
+        return;
       }
+
+      let startIdx = 0;
+      const firstRow = parsed[0] || [];
+      const isHeader = firstRow.some(cell => 
+        String(cell).includes('សំណួរ') || 
+        String(cell).includes('Question') || 
+        String(cell).includes('ជម្រើស') || 
+        String(cell).includes('Option') ||
+        String(cell).includes('ល.រ')
+      );
+      if (isHeader) {
+        startIdx = 1;
+      }
+
+      const importedQuestions: QuizQuestion[] = [];
+      const hasNoCol = isHeader && (String(firstRow[0]).includes('ល.រ') || String(firstRow[0]).includes('ល.រ.'));
+
+      for (let i = startIdx; i < parsed.length; i++) {
+        const row = parsed[i];
+        if (!row || row.length === 0 || (row.length === 1 && !String(row[0]).trim())) {
+          continue;
+        }
+
+        let questionText = '';
+        let opt1 = '';
+        let opt2 = '';
+        let opt3 = '';
+        let opt4 = '';
+        let rawAnsIdx = '';
+        let explanation = '';
+
+        if (hasNoCol) {
+          questionText = String(row[1] || '').trim();
+          opt1 = String(row[2] || '').trim();
+          opt2 = String(row[3] || '').trim();
+          opt3 = String(row[4] || '').trim();
+          opt4 = String(row[5] || '').trim();
+          rawAnsIdx = String(row[6] || '').trim();
+          explanation = String(row[7] || '').trim();
+        } else {
+          questionText = String(row[0] || '').trim();
+          opt1 = String(row[1] || '').trim();
+          opt2 = String(row[2] || '').trim();
+          opt3 = String(row[3] || '').trim();
+          opt4 = String(row[4] || '').trim();
+          rawAnsIdx = String(row[5] || '').trim();
+          explanation = String(row[6] || '').trim();
+        }
+
+        if (!questionText || !opt1 || !opt2) {
+          continue;
+        }
+
+        const options = [opt1, opt2, opt3 || 'ជម្រើសគ', opt4 || 'ជម្រើសឃ'];
+
+        let answerIndex = 0;
+        if (rawAnsIdx) {
+          const cleanRaw = rawAnsIdx.toLowerCase().trim();
+          if (cleanRaw.includes('ក') || cleanRaw === 'a') answerIndex = 0;
+          else if (cleanRaw.includes('ខ') || cleanRaw === 'b') answerIndex = 1;
+          else if (cleanRaw.includes('គ') || cleanRaw === 'c') answerIndex = 2;
+          else if (cleanRaw.includes('ឃ') || cleanRaw === 'd') answerIndex = 3;
+          else {
+            const convertedRaw = khmerToEnglishNumber(cleanRaw);
+            const parsedIdx = parseInt(convertedRaw, 10);
+            if (!isNaN(parsedIdx) && parsedIdx >= 1 && parsedIdx <= 4) {
+              answerIndex = parsedIdx - 1;
+            }
+          }
+        }
+
+        importedQuestions.push({
+          question: questionText,
+          options,
+          answerIndex,
+          explanation: explanation || `ចម្លើយត្រឹមត្រូវគឺ ៖ ${options[answerIndex]}`
+        });
+      }
+
+      if (importedQuestions.length === 0) {
+        setTeacherError('មិនអាចស្វែងរកទិន្នន័យសំណួរត្រឹមត្រូវក្នុងឯកសារទេ! សូមពិនិត្យមើលគំរូទ្រង់ទ្រាយឯកសារ CSV/Excel។');
+        playFailSound();
+        return;
+      }
+
+      const shouldReplace = window.confirm(`បានរកឃើញសំណួរចំនួន ${importedQuestions.length}។ តើអ្នកចង់ជំនួសសំណួរចាស់ៗទាំងអស់ (ចុច យល់ព្រម) ឬចង់បន្ថែមចូលទៅក្នុងសំណួរដែលមានស្រាប់ (ចុច បោះបង់)?`);
+
+      if (shouldReplace) {
+        setQuestions(importedQuestions);
+        setCurrentQIndex(0);
+        setTeacherSuccess(`បានជំនួសសំណួរទាំងអស់ដោយសំណួរថ្មីចំនួន ${importedQuestions.length} ដោយជោគជ័យ!`);
+      } else {
+        setQuestions(prev => [...prev, ...importedQuestions]);
+        setTeacherSuccess(`បានបន្ថែមសំណួរថ្មីចំនួន ${importedQuestions.length} ចូលក្នុងប្រព័ន្ធដោយជោគជ័យ!`);
+      }
+
+      playSuccessSound();
+      e.target.value = '';
     };
-    reader.readAsText(file);
+
+    if (fileName.endsWith('.csv')) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const text = event.target?.result as string;
+          if (!text) {
+            setTeacherError('ឯកសារគ្មានទិន្នន័យទេ!');
+            playFailSound();
+            return;
+          }
+          let parsed: string[][] = [];
+          try {
+            const workbook = XLSX.read(text, { type: 'string' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonRows = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1, raw: false, defval: '' });
+            parsed = jsonRows.map(row => (Array.isArray(row) ? row.map(cell => String(cell || '')) : []));
+          } catch {
+            parsed = parseCSV(text);
+          }
+          processParsedRows(parsed);
+        } catch (err) {
+          console.error(err);
+          setTeacherError('មានបញ្ហាក្នុងការអានឯកសារ CSV នេះ!');
+          playFailSound();
+        }
+      };
+      reader.readAsText(file, 'UTF-8');
+    } else {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const arrayBuffer = event.target?.result as ArrayBuffer;
+          const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonRows = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1, raw: false, defval: '' });
+          const parsed = jsonRows.map(row => (Array.isArray(row) ? row.map(cell => String(cell || '')) : []));
+          processParsedRows(parsed);
+        } catch (err) {
+          console.error(err);
+          // Fallback to text reading if it was an HTML-based XLS file
+          const textReader = new FileReader();
+          textReader.onload = (tEvt) => {
+            try {
+              const text = tEvt.target?.result as string;
+              let parsedHtml: string[][] = [];
+              if (text && (text.includes('<table') || text.includes('<tr'))) {
+                const domParser = new DOMParser();
+                const doc = domParser.parseFromString(text, 'text/html');
+                const trs = doc.querySelectorAll('tr');
+                trs.forEach(tr => {
+                  const rowData: string[] = [];
+                  tr.querySelectorAll('th, td').forEach(cell => rowData.push(cell.textContent?.trim() || ''));
+                  if (rowData.length > 0) parsedHtml.push(rowData);
+                });
+              } else if (text) {
+                parsedHtml = parseCSV(text);
+              }
+              processParsedRows(parsedHtml);
+            } catch {
+              setTeacherError('មានបញ្ហាក្នុងការអានឯកសារ Excel/CSV នេះ!');
+              playFailSound();
+            }
+          };
+          textReader.readAsText(file, 'UTF-8');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
   };
 
   const currentQuestion = questions[currentQIndex];
@@ -861,32 +930,44 @@ export default function Quiz({ words, onBack }: QuizProps) {
                   type="button"
                   onClick={handleDownloadTemplate}
                   className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-xs font-extrabold rounded-xl hover:bg-slate-50 transition-all cursor-pointer"
-                  title="ទាញយកគំរូឯកសារ Excel"
+                  title="ទាញយកគំរូឯកសារ CSV/Excel"
                 >
                   <Download size={13} className="text-slate-500" />
-                  <span>គំរូ Excel</span>
+                  <span>គំរូ CSV</span>
                 </button>
 
-                {/* Import Excel Button */}
+                {/* Import Excel / CSV Button */}
                 <label className="inline-flex items-center gap-1.5 px-3 py-2 border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-extrabold rounded-xl hover:bg-emerald-100 transition-all cursor-pointer relative">
                   <Upload size={13} className="text-emerald-600" />
-                  <span>នាំចូលពី Excel</span>
+                  <span>នាំចូល Excel / CSV</span>
                   <input
                     type="file"
-                    accept=".csv, .xls"
+                    accept=".csv, .xlsx, .xls"
                     onChange={handleImportCSV}
                     className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                   />
                 </label>
 
-                {/* Export Excel Button */}
+                {/* Export CSV Button */}
                 <button
                   type="button"
                   onClick={handleExportCSV}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 border border-blue-200 bg-blue-50 text-blue-700 text-xs font-extrabold rounded-xl hover:bg-blue-100 transition-all cursor-pointer"
+                  title="នាំចេញសំណួរជាឯកសារ CSV"
+                >
+                  <Download size={13} className="text-blue-600" />
+                  <span>នាំចេញ CSV</span>
+                </button>
+
+                {/* Export Excel Button */}
+                <button
+                  type="button"
+                  onClick={handleExportXLSX}
                   className="inline-flex items-center gap-1.5 px-3 py-2 border border-clay/20 bg-clay/5 text-clay text-xs font-extrabold rounded-xl hover:bg-clay/10 transition-all cursor-pointer"
+                  title="នាំចេញសំណួរជាឯកសារ Excel (.xlsx)"
                 >
                   <Download size={13} className="text-clay" />
-                  <span>នាំចេញទៅ Excel</span>
+                  <span>នាំចេញ Excel</span>
                 </button>
 
                 {/* Reset to Default Button */}
