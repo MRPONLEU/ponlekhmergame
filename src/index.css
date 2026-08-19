@@ -18,6 +18,25 @@ body {
   background-color: var(--color-stone-bg);
   color: var(--color-charcoal);
   font-family: "Battambang", "Kantumruy Pro", "Inter", ui-sans-serif, system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+html:fullscreen, body:fullscreen {
+  overflow: hidden !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Hide scrollbar for elements that need seamless layout */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 .soft-shadow {

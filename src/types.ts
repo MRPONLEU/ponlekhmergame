@@ -13,6 +13,16 @@ export interface QuizQuestion {
   explanation: string;
 }
 
+export interface Topic {
+  id: string;
+  name: string;
+  description?: string;
+  difficultWords: WordItem[]; // Sheet 1: ពាក្យពិបាក
+  shortPassages: WordItem[]; // Sheet 2: អត្ថបទខ្លី
+  quizQuestions: QuizQuestion[]; // Sheet 3: សំណួរពហុជម្រើស
+  createdAt: number;
+}
+
 export type ViewState =
   | 'dashboard'
   | 'add-words'

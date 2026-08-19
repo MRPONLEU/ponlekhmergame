@@ -34,6 +34,7 @@ import { playClickSound, playSuccessSound, speakText } from '../utils/audio';
 
 interface FlashcardsProps {
   words: WordItem[];
+  topicName?: string;
   onBack: () => void;
 }
 

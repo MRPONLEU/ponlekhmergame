@@ -22,10 +22,11 @@ const KHMER_DECOYS = ['្ង', 'ុំ', 'ម', 'ធ', 'ញ', 'ុ', 'ៀ', '�
 
 interface WordPuzzleProps {
   words: WordItem[];
+  topicName?: string;
   onBack: () => void;
 }
 
-export default function WordPuzzle({ words, onBack }: WordPuzzleProps) {
+export default function WordPuzzle({ words, topicName, onBack }: WordPuzzleProps) {
   const [filterType, setFilterType] = React.useState('ទាំងអស់');
 
   const uniqueWordTypes = React.useMemo(() => {

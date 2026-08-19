@@ -117,11 +117,17 @@ const optionStyles = [
 
 interface QuizProps {
   words: WordItem[];
+  questions?: QuizQuestion[];
+  topicName?: string;
+  onUpdateQuestions?: (questions: QuizQuestion[]) => void;
   onBack: () => void;
 }
 
-export default function Quiz({ words, onBack }: QuizProps) {
+export default function Quiz({ words, questions: propQuestions, topicName, onUpdateQuestions, onBack }: QuizProps) {
   const [questions, setQuestions] = React.useState<QuizQuestion[]>(() => {
+    if (propQuestions && propQuestions.length > 0) {
+      return propQuestions;
+    }
     try {
       const saved = localStorage.getItem('khmer_quiz_questions');
       return saved ? JSON.parse(saved) : DEFAULT_QUIZ;
@@ -132,8 +138,15 @@ export default function Quiz({ words, onBack }: QuizProps) {
   });
 
   React.useEffect(() => {
+    if (propQuestions) {
+      setQuestions(propQuestions);
+    }
+  }, [propQuestions]);
+
+  React.useEffect(() => {
     try {
       localStorage.setItem('khmer_quiz_questions', JSON.stringify(questions));
+      onUpdateQuestions?.(questions);
     } catch (e) {
       console.error("Failed to save quiz questions to localStorage", e);
     }

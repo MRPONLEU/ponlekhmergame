@@ -1,6 +1,6 @@
 import React from 'react';
-import { ViewState, WordItem } from './types';
-import { DEFAULT_WORDS } from './data';
+import { ViewState, WordItem, QuizQuestion, Topic } from './types';
+import { DEFAULT_TOPICS } from './data';
 import Dashboard from './components/Dashboard';
 import AddWords from './components/AddWords';
 import WordPuzzle from './components/WordPuzzle';
@@ -13,52 +13,124 @@ import Quiz from './components/Quiz';
 import MathFinger from './components/MathFinger';
 import MysteryBox from './components/MysteryBox';
 import { AnimatePresence, motion } from 'motion/react';
-
-import { playClickSound } from './utils/audio';
 import { isSentenceItem } from './utils/khmerSplit';
 
 export default function App() {
   const [currentView, setCurrentView] = React.useState<ViewState>('dashboard');
   
-  // Persistent Khmer word list in LocalStorage
-  const [words, setWords] = React.useState<WordItem[]>(() => {
+  // Persistent Topics in LocalStorage
+  const [topics, setTopics] = React.useState<Topic[]>(() => {
     try {
-      const saved = localStorage.getItem('khmer_words');
+      const saved = localStorage.getItem('khmer_topics');
       if (saved) {
-        const parsed: WordItem[] = JSON.parse(saved);
-        const hasSentences = parsed.some(w => isSentenceItem(w));
-        if (!hasSentences) {
-          const defaultSentences = DEFAULT_WORDS.filter(w => isSentenceItem(w));
-          return [...parsed, ...defaultSentences];
+        const parsed: Topic[] = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
         }
-        return parsed;
       }
-      return DEFAULT_WORDS;
+      // Check if user had older single-list khmer_words and migrate
+      const oldWords = localStorage.getItem('khmer_words');
+      if (oldWords) {
+        const parsedWords: WordItem[] = JSON.parse(oldWords);
+        if (Array.isArray(parsedWords) && parsedWords.length > 0) {
+          const diffWords = parsedWords.filter(w => !isSentenceItem(w));
+          const passages = parsedWords.filter(w => isSentenceItem(w));
+          const migrated: Topic[] = [
+            {
+              id: 'migrated-topic-1',
+              name: 'មេរៀនរបស់ខ្ញុំ (ទិន្នន័យពីមុន)',
+              description: 'ទិន្នន័យពាក្យ និងអត្ថបទដែលបានរក្សាទុកពីមុន',
+              difficultWords: diffWords.length > 0 ? diffWords : DEFAULT_TOPICS[0].difficultWords,
+              shortPassages: passages.length > 0 ? passages : DEFAULT_TOPICS[0].shortPassages,
+              quizQuestions: DEFAULT_TOPICS[0].quizQuestions,
+              createdAt: Date.now()
+            },
+            ...DEFAULT_TOPICS.slice(1)
+          ];
+          return migrated;
+        }
+      }
+      return DEFAULT_TOPICS;
     } catch (e) {
-      console.error("Failed to parse saved words, using default.", e);
-      return DEFAULT_WORDS;
+      console.error("Failed to parse saved topics, using default.", e);
+      return DEFAULT_TOPICS;
     }
   });
 
-  // Save words whenever list changes
+  // Active Topic ID
+  const [activeTopicId, setActiveTopicId] = React.useState<string>(() => {
+    try {
+      const savedId = localStorage.getItem('khmer_active_topic_id');
+      if (savedId && topics.some(t => t.id === savedId)) {
+        return savedId;
+      }
+      return topics[0]?.id || DEFAULT_TOPICS[0].id;
+    } catch {
+      return topics[0]?.id || DEFAULT_TOPICS[0].id;
+    }
+  });
+
+  // Save topics whenever list changes
   React.useEffect(() => {
     try {
-      localStorage.setItem('khmer_words', JSON.stringify(words));
+      localStorage.setItem('khmer_topics', JSON.stringify(topics));
     } catch (e) {
-      console.error("Failed to save words to localStorage", e);
+      console.error("Failed to save topics to localStorage", e);
     }
-  }, [words]);
+  }, [topics]);
 
-  const handleAddWord = (newWord: WordItem) => {
-    setWords(prev => [newWord, ...prev]);
+  // Save active topic ID
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('khmer_active_topic_id', activeTopicId);
+    } catch (e) {
+      console.error("Failed to save active topic id to localStorage", e);
+    }
+  }, [activeTopicId]);
+
+  // Current active topic reference
+  const activeTopic = React.useMemo(() => {
+    return topics.find(t => t.id === activeTopicId) || topics[0] || DEFAULT_TOPICS[0];
+  }, [topics, activeTopicId]);
+
+  // Derived words strictly scoped to the active topic
+  const activeWords = React.useMemo(() => {
+    const list = [...activeTopic.difficultWords, ...activeTopic.shortPassages];
+    // If empty fallback to difficult words
+    return list.length > 0 ? list : activeTopic.difficultWords;
+  }, [activeTopic]);
+
+  // Topic Management Handlers
+  const handleSelectTopic = (id: string) => {
+    setActiveTopicId(id);
   };
 
-  const handleRemoveWord = (index: number) => {
-    setWords(prev => prev.filter((_, idx) => idx !== index));
+  const handleAddTopic = (newTopic: Topic) => {
+    setTopics(prev => [newTopic, ...prev]);
+    setActiveTopicId(newTopic.id);
   };
 
-  const handleSetWords = (newWords: WordItem[]) => {
-    setWords(newWords);
+  const handleUpdateTopic = (updatedTopic: Topic) => {
+    setTopics(prev => prev.map(t => t.id === updatedTopic.id ? updatedTopic : t));
+  };
+
+  const handleDeleteTopic = (id: string) => {
+    setTopics(prev => {
+      const next = prev.filter(t => t.id !== id);
+      if (activeTopicId === id && next.length > 0) {
+        setActiveTopicId(next[0].id);
+      }
+      return next;
+    });
+  };
+
+  const handleUpdateActiveQuizQuestions = (questions: QuizQuestion[]) => {
+    setTopics(prev => prev.map(t => {
+      if (t.id === activeTopicId) {
+        return { ...t, quizQuestions: questions };
+      }
+      return t;
+    }));
   };
 
   const handleNavigate = (view: ViewState) => {
@@ -72,44 +144,52 @@ export default function App() {
         return (
           <Dashboard 
             onNavigate={handleNavigate} 
-            wordCount={words.length} 
+            topics={topics}
+            activeTopicId={activeTopicId}
+            onSelectTopic={handleSelectTopic}
           />
         );
       case 'add-words':
         return (
           <AddWords 
-            words={words} 
-            onAddWord={handleAddWord} 
-            onRemoveWord={handleRemoveWord} 
-            onSetWords={handleSetWords}
+            topics={topics}
+            activeTopicId={activeTopicId}
+            onSelectTopic={handleSelectTopic}
+            onAddTopic={handleAddTopic}
+            onUpdateTopic={handleUpdateTopic}
+            onDeleteTopic={handleDeleteTopic}
             onBack={() => handleNavigate('dashboard')} 
           />
         );
       case 'team-cards':
         return (
           <TeamCards 
-            words={words} 
+            words={activeWords} 
+            topicName={activeTopic.name}
             onBack={() => handleNavigate('dashboard')} 
           />
         );
       case 'word-puzzle':
         return (
           <WordPuzzle 
-            words={words} 
+            words={activeWords} 
+            topicName={activeTopic.name}
             onBack={() => handleNavigate('dashboard')} 
           />
         );
       case 'word-search':
         return (
           <WordSearch 
-            words={words} 
+            words={activeWords} 
+            topicName={activeTopic.name}
             onBack={() => handleNavigate('dashboard')} 
           />
         );
       case 'lucky-draw':
         return (
           <LuckyDraw 
-            words={words} 
+            words={activeWords} 
+            topicName={activeTopic.name}
             onBack={() => handleNavigate('dashboard')} 
           />
         );
@@ -122,14 +202,18 @@ export default function App() {
       case 'flashcards':
         return (
           <Flashcards 
-            words={words} 
+            words={activeWords} 
+            topicName={activeTopic.name}
             onBack={() => handleNavigate('dashboard')} 
           />
         );
       case 'quiz':
         return (
           <Quiz 
-            words={words} 
+            words={activeWords} 
+            questions={activeTopic.quizQuestions}
+            topicName={activeTopic.name}
+            onUpdateQuestions={handleUpdateActiveQuizQuestions}
             onBack={() => handleNavigate('dashboard')} 
           />
         );
@@ -142,7 +226,8 @@ export default function App() {
       case 'mystery-box':
         return (
           <MysteryBox 
-            words={words} 
+            words={activeWords} 
+            topicName={activeTopic.name}
             onBack={() => handleNavigate('dashboard')} 
           />
         );
@@ -150,7 +235,9 @@ export default function App() {
         return (
           <Dashboard 
             onNavigate={handleNavigate} 
-            wordCount={words.length} 
+            topics={topics}
+            activeTopicId={activeTopicId}
+            onSelectTopic={handleSelectTopic}
           />
         );
     }
@@ -161,7 +248,7 @@ export default function App() {
       {/* Ambient background soft glow */}
       <div className="absolute top-[-100px] left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-b from-indigo-100/30 via-sky-50/20 to-transparent rounded-full blur-3xl z-0 pointer-events-none" />
       
-      <div className="relative z-10 w-full pb-12">
+      <div className={`relative z-10 w-full ${currentView === 'team-cards' ? 'p-0' : 'pb-12'}`}>
         <AnimatePresence mode="wait">
           <motion.div
             key={currentView}

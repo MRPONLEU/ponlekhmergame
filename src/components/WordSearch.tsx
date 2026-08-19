@@ -26,6 +26,7 @@ import { isSentenceItem } from '../utils/khmerSplit';
 
 interface WordSearchProps {
   words: WordItem[];
+  topicName?: string;
   onBack: () => void;
 }
 
