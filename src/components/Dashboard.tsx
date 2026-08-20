@@ -16,7 +16,8 @@ import {
   Layers,
   ChevronDown,
   Download,
-  Settings
+  Settings,
+  Hand
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { playClickSound, playSuccessSound } from '../utils/audio';
@@ -82,6 +83,14 @@ export default function Dashboard({
       icon: Gift,
       iconBoxBg: 'bg-purple-100 text-purple-600',
       badge: 'កំពុងពេញនិយម'
+    },
+    {
+      id: 'word-grab' as ViewState,
+      title: 'ល្បែងចាប់ពាក្យ (AI Camera)',
+      subtitle: 'លេងជាដៃគូ (សិស្សទី១ vs ទី២) ប្រើកាមេរ៉ាចាប់ចលនាដៃដណ្តើមចាប់ពាក្យ',
+      icon: Hand,
+      iconBoxBg: 'bg-cyan-100 text-cyan-700',
+      badge: 'កាមេរ៉ា AI'
     },
     {
       id: 'quiz' as ViewState,

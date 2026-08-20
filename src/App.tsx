@@ -12,6 +12,7 @@ import Flashcards from './components/Flashcards';
 import Quiz from './components/Quiz';
 import MathFinger from './components/MathFinger';
 import MysteryBox from './components/MysteryBox';
+import WordGrab from './components/WordGrab';
 import { AnimatePresence, motion } from 'motion/react';
 import { isSentenceItem } from './utils/khmerSplit';
 
@@ -228,6 +229,15 @@ export default function App() {
           <MysteryBox 
             words={activeWords} 
             topicName={activeTopic.name}
+            onBack={() => handleNavigate('dashboard')} 
+          />
+        );
+      case 'word-grab':
+        return (
+          <WordGrab 
+            words={activeWords} 
+            topics={topics}
+            activeTopicId={activeTopicId}
             onBack={() => handleNavigate('dashboard')} 
           />
         );

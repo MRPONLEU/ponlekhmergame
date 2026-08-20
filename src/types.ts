@@ -34,4 +34,5 @@ export type ViewState =
   | 'flashcards'
   | 'quiz'
   | 'math-finger'
-  | 'mystery-box';
+  | 'mystery-box'
+  | 'word-grab';

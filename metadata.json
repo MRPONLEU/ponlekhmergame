@@ -1,7 +1,9 @@
 {
   "name": "ល្បែងសិក្សា",
   "description": "កម្មវិធីល្បែងសិក្សាកុមារតាមប្រធានបទ Excel ៣ Sheet (ពាក្យពិបាក អត្ថបទខ្លី សំណួរពហុជម្រើស)៖ បើកប្រអប់សំណាង បើកកាត ផ្គុំពាក្យ ស្វែងរកពាក្យ កងបង្វិល និងបណ្ណពាក្យ A4",
-  "requestFramePermissions": [],
+  "requestFramePermissions": [
+    "camera"
+  ],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]
