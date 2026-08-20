@@ -510,12 +510,12 @@ export default function Spinner({ onBack }: SpinnerProps) {
   }, []);
 
   return (
-    <div className={`font-sans transition-all duration-300 ${
+    <div className={`font-sans transition-all duration-300 w-full ${
       isFullscreen 
         ? 'fixed inset-0 z-50 bg-gradient-to-b from-[#3b0764] via-[#2e1065] to-[#1e0538] flex flex-col w-screen h-screen m-0 p-2 sm:p-3 md:p-4 overflow-hidden' 
-        : 'min-h-screen bg-transparent py-2 px-2 sm:px-4 lg:px-6 flex flex-col justify-start'
+        : 'h-screen max-h-screen bg-transparent p-2 sm:p-3 md:p-4 flex flex-col justify-start overflow-hidden'
     }`}>
-      <div className="w-full h-full flex flex-col flex-1 min-h-0 justify-start gap-2.5 sm:gap-3.5">
+      <div className="w-full h-full flex flex-col flex-1 min-h-0 justify-start gap-2.5 sm:gap-3">
         
         {/* PURPLE GRADIENT NAVIGATION BAR - DEDICATED FOR STUDENT RANDOM PICKER */}
         <div className="w-full bg-gradient-to-r from-[#581c87] via-[#4c1d95] to-[#3b0764] py-3 sm:py-3.5 px-4 sm:px-6 rounded-2xl sm:rounded-3xl border border-purple-400/30 shadow-2xl flex flex-wrap items-center justify-between gap-3 text-white shrink-0">
@@ -613,11 +613,7 @@ export default function Spinner({ onBack }: SpinnerProps) {
         </div>
 
         {/* MAIN STAGE CARD: VIOLET RADIAL SUNBURST BACKDROP LIKE IMAGE.PNG */}
-        <div className={`relative rounded-3xl sm:rounded-[36px] overflow-hidden shadow-2xl border-2 border-purple-500/30 bg-gradient-to-b from-[#6b21a8] via-[#4c1d95] to-[#2e1065] text-white flex flex-col items-center justify-center ${
-          isFullscreen 
-            ? 'flex-1 h-full w-full min-h-0 p-2 sm:p-4' 
-            : 'min-h-[560px] sm:min-h-[640px] flex-1 p-4 sm:p-6'
-        }`}>
+        <div className="relative rounded-2xl sm:rounded-3xl md:rounded-[32px] overflow-hidden shadow-2xl border-2 border-purple-500/30 bg-gradient-to-b from-[#6b21a8] via-[#4c1d95] to-[#2e1065] text-white flex flex-col items-center justify-center flex-1 h-full w-full min-h-0 p-3 sm:p-5">
           
           {/* Violet Radial Sunburst Rays in Background (Matching image.png sunburst) */}
           <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-40">
@@ -663,28 +659,6 @@ export default function Spinner({ onBack }: SpinnerProps) {
                 បង្វិល
               </button>
             </div>
-          </div>
-
-          {/* Bottom Fast Action Controls Pill */}
-          <div className="relative z-20 mt-2 flex items-center gap-3">
-            <button
-              onClick={handleSpin}
-              disabled={isSpinning || names.length === 0}
-              id="btn-spin-wheel-bottom"
-              className="px-8 py-3.5 sm:px-10 sm:py-4 bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 active:scale-95 text-purple-950 font-black text-lg sm:text-xl rounded-full shadow-2xl border-2 border-yellow-200 transition-all cursor-pointer flex items-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Sparkles size={22} className="fill-purple-950" />
-              <span>{isSpinning ? "កំពុងវិល..." : "បង្វិលកង"}</span>
-            </button>
-
-            <button
-              onClick={handleShuffle}
-              disabled={isSpinning || names.length === 0}
-              className="p-3.5 sm:p-4 bg-purple-900/60 hover:bg-purple-800/80 active:scale-95 text-white rounded-full border border-purple-400/40 shadow-lg transition-all cursor-pointer"
-              title="ច្របល់ឈ្មោះចៃដន្យ"
-            >
-              <Shuffle size={20} />
-            </button>
           </div>
 
         </div>

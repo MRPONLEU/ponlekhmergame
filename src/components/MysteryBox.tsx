@@ -414,12 +414,12 @@ export default function MysteryBox({ words, topicName, onBack }: MysteryBoxProps
   }
 
   return (
-    <div className={`font-sans transition-all duration-300 ${
+    <div className={`font-sans transition-all duration-300 w-full ${
       isFullscreen 
         ? 'fixed inset-0 z-50 bg-gradient-to-b from-[#3b0764] via-[#2e1065] to-[#1e0538] flex flex-col w-screen h-screen m-0 p-2 sm:p-3 md:p-4 overflow-hidden' 
-        : 'min-h-screen bg-transparent py-2 px-2 sm:px-4 lg:px-6 flex flex-col justify-start'
+        : 'h-screen max-h-screen bg-transparent p-2 sm:p-3 md:p-4 flex flex-col justify-start overflow-hidden'
     }`}>
-      <div className="w-full h-full flex flex-col flex-1 min-h-0 justify-start gap-2.5 sm:gap-3.5">
+      <div className="w-full h-full flex flex-col flex-1 min-h-0 justify-start gap-2.5 sm:gap-3">
         
         {/* PURPLE GRADIENT NAVIGATION BAR - FULL WIDTH & PROPORTIONALLY LARGE */}
         <div className="w-full bg-gradient-to-r from-[#581c87] via-[#4c1d95] to-[#3b0764] py-3 sm:py-3.5 px-4 sm:px-6 rounded-2xl sm:rounded-3xl border border-purple-400/30 shadow-2xl flex flex-wrap items-center justify-between gap-3 text-white shrink-0">
@@ -530,11 +530,7 @@ export default function MysteryBox({ words, topicName, onBack }: MysteryBoxProps
         </div>
 
         {/* Main Stage Card - Purple Studio Backdrop inspired by reference image */}
-        <div className={`relative rounded-3xl sm:rounded-[36px] overflow-hidden shadow-2xl border-2 border-purple-500/30 bg-gradient-to-b from-[#6b21a8] via-[#4c1d95] to-[#2e1065] text-white flex flex-col items-center justify-between ${
-          isFullscreen 
-            ? 'flex-1 h-full w-full min-h-0 p-3 sm:p-5' 
-            : 'min-h-[580px] sm:min-h-[660px] p-4 sm:p-8'
-        }`}>
+        <div className="relative rounded-2xl sm:rounded-3xl md:rounded-[32px] overflow-hidden shadow-2xl border-2 border-purple-500/30 bg-gradient-to-b from-[#6b21a8] via-[#4c1d95] to-[#2e1065] text-white flex flex-col items-center justify-between flex-1 h-full w-full min-h-0 p-3 sm:p-5">
           
           {/* Ambient Radial Spotlight rays behind mystery box - GPU Accelerated Light Radial */}
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(251,191,36,0.18)_0%,_rgba(147,51,234,0.1)_50%,_transparent_80%)] pointer-events-none" />
