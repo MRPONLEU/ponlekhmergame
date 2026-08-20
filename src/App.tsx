@@ -248,15 +248,15 @@ export default function App() {
       {/* Ambient background soft glow */}
       <div className="absolute top-[-100px] left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-b from-indigo-100/30 via-sky-50/20 to-transparent rounded-full blur-3xl z-0 pointer-events-none" />
       
-      <div className={`relative z-10 w-full ${currentView === 'team-cards' ? 'p-0' : 'pb-12'}`}>
+      <div className={`relative z-10 w-full h-full ${['dashboard', 'add-words'].includes(currentView) ? 'pb-12' : 'pb-0'}`}>
         <AnimatePresence mode="wait">
           <motion.div
             key={currentView}
-            initial={{ opacity: 0, y: 15 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            transition={{ duration: 0.25 }}
-            className="w-full"
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="w-full h-full"
           >
             {renderView()}
           </motion.div>

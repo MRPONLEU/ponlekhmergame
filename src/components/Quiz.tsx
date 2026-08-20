@@ -221,8 +221,42 @@ export default function Quiz({ words, questions: propQuestions, topicName, onUpd
 
   const toggleFullScreen = () => {
     playClickSound();
-    setIsFullScreen(!isFullScreen);
+    if (!isFullScreen) {
+      setIsFullScreen(true);
+      try {
+        if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        }
+      } catch (err) {
+        console.log("Fullscreen request error:", err);
+      }
+    } else {
+      setIsFullScreen(false);
+      try {
+        if (document.fullscreenElement && document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        }
+      } catch (err) {
+        console.log("Exit fullscreen error:", err);
+      }
+    }
   };
+
+  React.useEffect(() => {
+    const handleFullscreenChange = () => {
+      if (document.fullscreenElement) {
+        setIsFullScreen(true);
+      } else {
+        setIsFullScreen(false);
+      }
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
 
 
 
@@ -810,7 +844,9 @@ export default function Quiz({ words, questions: propQuestions, topicName, onUpd
   const currentQuestion = questions[currentQIndex];
 
   return (
-    <div className="h-screen max-h-screen w-full overflow-hidden flex flex-col bg-slate-900/10 select-none relative font-sans">
+    <div className={`h-screen max-h-screen w-full overflow-hidden flex flex-col bg-slate-900/10 select-none relative font-sans ${
+      isFullScreen ? 'fixed inset-0 z-50 bg-slate-950 w-screen h-screen' : ''
+    }`}>
       
       {/* Top Banner (Fixed/Sticky Edge-to-Edge Navigation Header & Scoreboard matching Card Game) */}
       <div className="sticky top-0 z-30 shrink-0 w-full bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 px-3 sm:px-6 py-2.5 sm:py-3.5 shadow-lg flex flex-wrap items-center justify-between border-b-4 border-amber-600/70 gap-3">
@@ -896,8 +932,8 @@ export default function Quiz({ words, questions: propQuestions, topicName, onUpd
           {/* Fullscreen Button */}
           <button
             onClick={toggleFullScreen}
-            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/90 hover:bg-white active:scale-90 text-stone-700 hover:text-amber-600 flex items-center justify-center shadow-xs transition-all cursor-pointer border border-stone-200 hidden sm:flex"
-            title="ពេញអេក្រង់"
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/90 hover:bg-white active:scale-90 text-stone-700 hover:text-amber-600 flex items-center justify-center shadow-xs transition-all cursor-pointer border border-stone-200"
+            title={isFullScreen ? "បង្រួមមកវិញ" : "ពេញអេក្រង់"}
           >
             {isFullScreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
           </button>
@@ -913,9 +949,9 @@ export default function Quiz({ words, questions: propQuestions, topicName, onUpd
         </div>
       </div>
 
-      {/* Main Content Area filling remaining height */}
-      <div className="flex-1 overflow-y-auto w-full p-3 sm:p-6 md:p-8 flex flex-col items-center justify-center">
-        <div className="max-w-6xl w-full my-auto flex flex-col justify-center pb-4">
+      {/* Main Content Area filling remaining height proportionally */}
+      <div className="flex-1 w-full p-2 sm:p-3 md:p-4 flex flex-col min-h-0 overflow-y-auto">
+        <div className="w-full h-full flex-1 flex flex-col min-h-0">
 
 
 
@@ -924,7 +960,7 @@ export default function Quiz({ words, questions: propQuestions, topicName, onUpd
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-[32px] p-6 sm:p-10 border border-border-beige soft-shadow space-y-8"
+            className="bg-white rounded-[32px] p-6 sm:p-10 border border-border-beige soft-shadow space-y-8 my-auto"
           >
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-slate-100 pb-5">
               <div className="flex items-center gap-3">
@@ -1235,24 +1271,14 @@ export default function Quiz({ words, questions: propQuestions, topicName, onUpd
           currentQuestion ? (
             <div 
               ref={quizRef}
-              className={
-                isFullScreen 
-                  ? `fixed inset-0 z-[999] ${quizTheme === 'purple' ? 'bg-[#8a2be2]' : 'bg-stone-bg'} p-4 sm:p-8 md:p-12 flex items-center justify-center overflow-y-auto select-none`
-                  : ""
-              }
+              className="w-full h-full flex-1 flex flex-col justify-stretch min-h-0"
             >
-              <div className={
-                isFullScreen 
-                  ? `${quizTheme === 'purple' ? 'bg-gradient-to-br from-purple-800 via-violet-800 to-indigo-900 border-purple-500/30' : 'bg-white border-border-beige'} rounded-[36px] p-8 sm:p-12 md:p-16 border soft-shadow w-full h-full max-w-none flex flex-col justify-between overflow-y-auto space-y-8 relative`
-                  : `${quizTheme === 'purple' ? 'bg-gradient-to-br from-purple-700 via-indigo-800 to-purple-900 border-purple-400/30 text-white' : 'bg-white border-border-beige'} rounded-[36px] p-6 sm:p-10 border soft-shadow space-y-8 relative shadow-2xl`
-              }>
+              <div className={`${quizTheme === 'purple' ? 'bg-gradient-to-br from-purple-700 via-indigo-800 to-purple-900 border-2 border-purple-400/30 text-white' : 'bg-white border-border-beige'} rounded-2xl sm:rounded-3xl md:rounded-[32px] p-3 sm:p-5 md:p-6 flex flex-col justify-between shadow-2xl relative w-full h-full flex-1 min-h-[540px] overflow-hidden`}>
                 
                 {/* Question Index/Score Header Bar */}
-                <div className={`flex items-center justify-between font-bold tracking-wider ${
+                <div className={`flex items-center justify-between font-bold tracking-wider shrink-0 ${
                   quizTheme === 'purple' ? 'text-purple-200' : 'text-soft-gray'
-                } ${
-                  isFullScreen ? "text-sm sm:text-base md:text-lg mb-2" : "text-xs"
-                }`}>
+                } text-sm sm:text-base md:text-lg mb-1 sm:mb-2`}>
                   <span className="font-extrabold uppercase">សំណួរទី {currentQIndex + 1} នៃ {questions.length}</span>
                   <div className="flex items-center gap-3">
                     <span className={`font-black ${quizTheme === 'purple' ? 'text-amber-300' : 'text-sage'}`}>ពិន្ទុ៖ {score}</span>
@@ -1260,44 +1286,26 @@ export default function Quiz({ words, questions: propQuestions, topicName, onUpd
                       <button
                         onClick={handleNext}
                         id="btn-quiz-next-top"
-                        className={`bg-amber-400 hover:bg-amber-500 text-purple-950 font-black transition-all shadow-md cursor-pointer flex items-center gap-1.5 ${
-                          isFullScreen ? "px-5 py-2.5 sm:px-6 sm:py-3 text-base rounded-2xl" : "px-4 py-2 text-xs rounded-xl"
-                        }`}
+                        className="bg-amber-400 hover:bg-amber-500 active:scale-95 text-purple-950 font-black transition-all shadow-md cursor-pointer flex items-center gap-1.5 px-4 py-2 sm:px-6 sm:py-2.5 text-sm sm:text-base rounded-xl sm:rounded-2xl"
                       >
                         <span>{currentQIndex === questions.length - 1 ? "បញ្ចប់" : "សំណួរបន្ទាប់"}</span>
-                        <ChevronRight size={isFullScreen ? 20 : 16} />
+                        <ChevronRight size={18} />
                       </button>
                     )}
 
                     <button
                       onClick={toggleFullScreen}
-                      className={`hover:bg-purple-100/20 border border-purple-300/30 rounded-xl transition-all ${quizTheme === 'purple' ? 'text-white bg-purple-900/40' : 'text-charcoal bg-white'} cursor-pointer flex items-center justify-center shadow-xs ${
-                        isFullScreen ? "p-2.5 sm:p-3" : "p-2"
-                      }`}
+                      className={`hover:bg-purple-100/20 border border-purple-300/30 rounded-xl transition-all ${quizTheme === 'purple' ? 'text-white bg-purple-900/40' : 'text-charcoal bg-white'} cursor-pointer flex items-center justify-center shadow-xs p-2 sm:p-2.5`}
                       title={isFullScreen ? "បង្រួមមកវិញ" : "ពង្រីកពេញអេក្រង់"}
                     >
-                      {isFullScreen ? <Minimize2 size={20} /> : <Maximize2 size={16} />}
+                      {isFullScreen ? <Minimize2 size={20} /> : <Maximize2 size={18} />}
                     </button>
                   </div>
                 </div>
 
-              {/* Question Pill Container (Visible only when revealed) */}
-              {isRevealed && (
-                <div className="relative w-full max-w-5xl mx-auto my-auto flex-grow flex items-center justify-center py-2 sm:py-4">
-                  {/* White Pill Container */}
-                  <div className={`w-full bg-white rounded-3xl sm:rounded-[40px] px-8 py-6 sm:px-16 sm:py-8 border-4 border-purple-200/90 shadow-2xl flex items-center justify-center min-h-[100px] sm:min-h-[120px]`}>
-                    <h2 className={`font-extrabold text-purple-950 text-center leading-relaxed select-text tracking-wide ${
-                      isFullScreen ? "text-2xl sm:text-3xl md:text-4xl lg:text-5xl" : "text-xl sm:text-2xl md:text-3xl lg:text-4xl"
-                    }`}>
-                      {currentQuestion.question}
-                    </h2>
-                  </div>
-                </div>
-              )}
-
               {/* Option Buttons Grid or Pre-reveal Button */}
               {!isRevealed ? (
-                <div className="flex-grow flex flex-col items-center justify-center py-8 sm:py-14 space-y-6">
+                <div className="flex-1 flex flex-col items-center justify-center py-6 sm:py-10 space-y-6 my-auto">
                   <div className="w-24 h-24 bg-amber-400/20 border-4 border-amber-400 text-amber-300 rounded-full flex items-center justify-center animate-bounce shadow-xl">
                     <Sparkles size={48} className="fill-amber-300" />
                   </div>
@@ -1322,27 +1330,34 @@ export default function Quiz({ words, questions: propQuestions, topicName, onUpd
                   </button>
                 </div>
               ) : (
-                <>
-                  {/* Countdown Timer for Mobile (Centered Circle) */}
-                  {!hasAnswered && (
-                    <div className="flex justify-center mb-4 sm:hidden">
-                      <div className="relative flex items-center justify-center">
-                        <div className={`relative w-20 h-20 rounded-full flex flex-col items-center justify-center border-4 shadow-lg ${
-                          timeLeft <= 3 ? 'bg-rose-500 border-rose-200 text-white animate-bounce' : 'bg-white border-amber-400 text-purple-950'
-                        }`}>
-                          <span className="text-2xl font-black font-mono leading-none">{timeLeft}</span>
-                          <span className="text-[8px] font-bold uppercase tracking-wider">វិនាទី</span>
+                /* UNIFIED QUESTION + ADJACENT OPTIONS CENTERED CONTAINER */
+                <div className="flex-1 w-full max-w-5xl mx-auto flex flex-col items-center justify-center gap-3 sm:gap-4 md:gap-5 my-auto min-h-0">
+                  
+                  {/* Question Pill Container */}
+                  <div className="w-full bg-white rounded-2xl sm:rounded-3xl md:rounded-[36px] px-5 sm:px-10 py-4 sm:py-6 border-4 border-purple-200/90 shadow-2xl flex items-center justify-center shrink-0">
+                    <h2 className="font-extrabold text-purple-950 text-center leading-relaxed select-text tracking-wide text-xl sm:text-2xl md:text-3xl lg:text-4xl">
+                      {currentQuestion.question}
+                    </h2>
+                  </div>
+
+                  {/* Options container directly adjacent to the question */}
+                  <div className="relative w-full shrink-0">
+                    {/* Countdown Timer for Mobile (Centered Circle) */}
+                    {!hasAnswered && (
+                      <div className="flex justify-center mb-2 sm:hidden shrink-0">
+                        <div className="relative flex items-center justify-center">
+                          <div className={`relative w-14 h-14 rounded-full flex flex-col items-center justify-center border-3 shadow-lg ${
+                            timeLeft <= 3 ? 'bg-rose-500 border-rose-200 text-white animate-bounce' : 'bg-white border-amber-400 text-purple-950'
+                          }`}>
+                            <span className="text-lg font-black font-mono leading-none">{timeLeft}</span>
+                            <span className="text-[7px] font-bold uppercase tracking-wider">វិនាទី</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Options container matching image.png styling */}
-                  <div className="relative w-full max-w-5xl mx-auto">
                     {/* Option Buttons Grid */}
-                    <div className={`grid grid-cols-1 sm:grid-cols-2 ${
-                      isFullScreen ? "gap-6 sm:gap-8 md:gap-10 pb-6" : "gap-5 sm:gap-6"
-                    }`}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-5">
                       {currentQuestion.options.map((option, idx) => {
                         const isSelected = selectedOptionIdx === idx;
                         const isCorrect = idx === currentQuestion.answerIndex;
@@ -1384,11 +1399,7 @@ export default function Quiz({ words, questions: propQuestions, topicName, onUpd
                               onClick={() => handleOptionClick(idx)}
                               disabled={hasAnswered}
                               id={`option-${idx}`}
-                              className={`w-full transition-all text-left flex items-stretch border-3 rounded-2xl sm:rounded-3xl overflow-hidden -skew-x-12 shadow-md ${
-                                isFullScreen
-                                  ? "min-h-[80px] sm:min-h-[95px]"
-                                  : "min-h-[65px] sm:min-h-[72px]"
-                              } ${
+                              className={`w-full transition-all text-left flex items-stretch border-3 rounded-2xl sm:rounded-3xl overflow-hidden -skew-x-12 shadow-lg min-h-[66px] sm:min-h-[74px] md:min-h-[82px] ${
                                 showSuccess
                                   ? 'bg-emerald-50 border-emerald-500 text-emerald-900 font-black ring-4 ring-emerald-400/30'
                                   : showFailure
@@ -1399,7 +1410,7 @@ export default function Quiz({ words, questions: propQuestions, topicName, onUpd
                               }`}
                             >
                               {/* Left Colored Badge for Option Prefix (A, B, C, D / ក, ខ, គ, ឃ) */}
-                              <div className={`w-16 sm:w-20 shrink-0 flex items-center justify-center font-black transition-colors ${
+                              <div className={`w-16 sm:w-20 md:w-22 shrink-0 flex items-center justify-center font-black transition-colors ${
                                 showSuccess
                                   ? 'bg-emerald-500 text-white'
                                   : showFailure
@@ -1408,16 +1419,14 @@ export default function Quiz({ words, questions: propQuestions, topicName, onUpd
                                       ? 'bg-slate-400 text-white'
                                       : `${theme.badgeBg} text-white`
                               }`}>
-                                <span className="skew-x-12 text-xl sm:text-2xl font-black drop-shadow-xs">
+                                <span className="skew-x-12 text-xl sm:text-2xl md:text-3xl font-black drop-shadow-xs">
                                   {prefixLabel}
                                 </span>
                               </div>
 
                               {/* Right White Content Area for Answer Text */}
-                              <div className="flex-1 px-4 sm:px-6 py-3.5 flex items-center justify-between bg-white/90">
-                                <span className={`skew-x-12 leading-relaxed select-none text-left flex-1 font-extrabold ${
-                                  isFullScreen ? 'text-2xl sm:text-3xl' : 'text-xl sm:text-2xl'
-                                } ${
+                              <div className="flex-1 px-4 sm:px-6 md:px-7 py-2.5 sm:py-3.5 flex items-center justify-between bg-white/95">
+                                <span className={`skew-x-12 leading-relaxed select-none text-left flex-1 font-extrabold text-lg sm:text-xl md:text-2xl ${
                                   showSuccess
                                     ? 'text-emerald-800'
                                     : showFailure
@@ -1430,10 +1439,10 @@ export default function Quiz({ words, questions: propQuestions, topicName, onUpd
                                 </span>
 
                                 {showSuccess && (
-                                  <CheckCircle2 size={24} className="skew-x-12 text-emerald-600 shrink-0 ml-2" />
+                                  <CheckCircle2 size={26} className="skew-x-12 text-emerald-600 shrink-0 ml-2" />
                                 )}
                                 {showFailure && (
-                                  <XCircle size={24} className="skew-x-12 text-rose-600 shrink-0 ml-2" />
+                                  <XCircle size={26} className="skew-x-12 text-rose-600 shrink-0 ml-2" />
                                 )}
                               </div>
                             </button>
@@ -1452,7 +1461,7 @@ export default function Quiz({ words, questions: propQuestions, topicName, onUpd
                           }`} />
                           
                           {/* Circle Badge */}
-                          <div className={`relative w-24 h-24 md:w-26 md:h-26 rounded-full flex flex-col items-center justify-center border-4 shadow-2xl transition-all duration-300 ${
+                          <div className={`relative w-22 h-22 md:w-24 md:h-24 rounded-full flex flex-col items-center justify-center border-4 shadow-2xl transition-all duration-300 ${
                             timeLeft <= 3 
                               ? 'bg-rose-500 border-rose-200 text-white animate-bounce' 
                               : 'bg-white border-amber-400 text-purple-950'
@@ -1489,7 +1498,7 @@ export default function Quiz({ words, questions: propQuestions, topicName, onUpd
                       </div>
                     )}
                   </div>
-                </>
+                </div>
               )}
 
 
@@ -1507,7 +1516,7 @@ export default function Quiz({ words, questions: propQuestions, topicName, onUpd
           <motion.div
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200/60 shadow-sm flex flex-col items-center text-center space-y-6"
+            className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200/60 shadow-xl flex flex-col items-center text-center space-y-6 my-auto max-w-2xl mx-auto w-full"
           >
             <div className="w-20 h-20 bg-sage/10 text-sage rounded-full flex items-center justify-center animate-bounce">
               <Award size={44} />

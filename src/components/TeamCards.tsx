@@ -722,7 +722,7 @@ export default function TeamCards({ words, onBack }: TeamCardsProps) {
   const ModeIcon = activeModeConfig.icon;
 
   return (
-    <div className="h-screen h-[100dvh] max-h-screen overflow-hidden flex flex-col bg-[#f39c12]/20 select-none relative font-sans">
+    <div className="h-screen max-h-screen overflow-hidden flex flex-col bg-[#f39c12]/20 select-none relative font-sans">
       
       {/* Top Banner (Modern Dynamic Header & Team Scoreboard - Fixed at Top) */}
       <div className="sticky top-0 z-30 shrink-0 w-full bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 px-3 sm:px-6 py-2.5 sm:py-3.5 shadow-lg flex items-center justify-between border-b-4 border-amber-600/70">

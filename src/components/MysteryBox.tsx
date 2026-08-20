@@ -358,10 +358,45 @@ export default function MysteryBox({ words, topicName, onBack }: MysteryBoxProps
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, isOpening, remainingWords, filteredWords]);
 
+  // Fullscreen toggle with HTML5 Fullscreen API support and seamless state sync
   const toggleFullscreen = () => {
     playClickSound();
-    setIsFullscreen(!isFullscreen);
+    if (!isFullscreen) {
+      setIsFullscreen(true);
+      try {
+        if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        }
+      } catch (err) {
+        console.log("Fullscreen request:", err);
+      }
+    } else {
+      setIsFullscreen(false);
+      try {
+        if (document.fullscreenElement && document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        }
+      } catch (err) {
+        console.log("Exit fullscreen:", err);
+      }
+    }
   };
+
+  React.useEffect(() => {
+    const handleFullscreenChange = () => {
+      if (document.fullscreenElement) {
+        setIsFullscreen(true);
+      } else {
+        setIsFullscreen(false);
+      }
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
 
   if (!words || words.length === 0) {
     return (
@@ -381,20 +416,18 @@ export default function MysteryBox({ words, topicName, onBack }: MysteryBoxProps
   return (
     <div className={`font-sans transition-all duration-300 ${
       isFullscreen 
-        ? 'fixed inset-0 z-50 bg-slate-950 flex flex-col overflow-hidden w-screen h-screen h-[100dvh] max-h-screen m-0 p-2 sm:p-3 select-none' 
-        : 'min-h-screen bg-transparent py-3 px-2 sm:px-4 lg:px-6'
+        ? 'fixed inset-0 z-50 bg-gradient-to-b from-[#3b0764] via-[#2e1065] to-[#1e0538] flex flex-col w-screen h-screen m-0 p-2 sm:p-3 md:p-4 overflow-hidden' 
+        : 'min-h-screen bg-transparent py-2 px-2 sm:px-4 lg:px-6 flex flex-col justify-start'
     }`}>
-      <div className="w-full h-full flex flex-col justify-between overflow-hidden min-h-0 flex-1">
+      <div className="w-full h-full flex flex-col flex-1 min-h-0 justify-start gap-2.5 sm:gap-3.5">
         
-        {/* PURPLE GRADIENT NAVIGATION BAR - FULL WIDTH & RESPONSIVE */}
-        <div className={`shrink-0 w-full bg-gradient-to-r from-[#581c87] via-[#4c1d95] to-[#3b0764] rounded-2xl sm:rounded-3xl border border-purple-400/30 shadow-xl flex items-center justify-between gap-2 text-white ${
-          isFullscreen ? 'mb-1.5 sm:mb-2 py-1.5 sm:py-2 px-2.5 sm:px-4' : 'mb-4 py-3.5 px-4 sm:px-6'
-        }`}>
+        {/* PURPLE GRADIENT NAVIGATION BAR - FULL WIDTH & PROPORTIONALLY LARGE */}
+        <div className="w-full bg-gradient-to-r from-[#581c87] via-[#4c1d95] to-[#3b0764] py-3 sm:py-3.5 px-4 sm:px-6 rounded-2xl sm:rounded-3xl border border-purple-400/30 shadow-2xl flex flex-wrap items-center justify-between gap-3 text-white shrink-0">
           
-          {/* LEFT: Team / Individual Score Cards */}
-          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          {/* LEFT: Team / Individual Score Cards (Large & Prominent) */}
+          <div className="flex flex-wrap items-center gap-3.5">
             {playMode === 'team' ? (
-              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+              <div className="flex flex-wrap items-center gap-3">
                 {DEFAULT_TEAMS_DATA.slice(0, teamCount).map((team, idx) => {
                   const isActive = activeTeamIndex === idx;
                   return (
@@ -404,37 +437,29 @@ export default function MysteryBox({ words, topicName, onBack }: MysteryBoxProps
                         playClickSound();
                         setActiveTeamIndex(idx);
                       }}
-                      className={`relative bg-amber-50/95 text-slate-800 rounded-xl sm:rounded-2xl shadow-md border transition-all flex items-center cursor-pointer ${
-                        isFullscreen ? 'p-1 sm:p-1.5 gap-1.5 sm:gap-2.5' : 'p-2 sm:p-2.5 gap-3'
-                      } ${
+                      className={`relative bg-amber-50/95 text-slate-800 p-2 sm:p-2.5 rounded-2xl sm:rounded-3xl shadow-xl border transition-all flex items-center gap-3 cursor-pointer ${
                         isActive
-                          ? 'border-pink-500 ring-2 sm:ring-4 ring-pink-500/80 scale-105 z-10 bg-white'
+                          ? 'border-pink-500 ring-4 ring-pink-500/80 scale-105 z-10 bg-white'
                           : 'border-purple-300/40 opacity-85 hover:opacity-100'
                       }`}
                     >
                       {/* Active Turn Flame Badge */}
                       {isActive && (
-                        <div className="absolute -top-2.5 left-2 px-2 py-0.5 bg-neutral-900 text-amber-400 text-[10px] sm:text-xs font-black rounded-full shadow-md border border-amber-400/60 flex items-center gap-0.5 animate-bounce z-20">
-                          <Flame size={12} className="text-orange-500 fill-amber-400" />
+                        <div className="absolute -top-3.5 left-3 px-2.5 py-0.5 bg-neutral-900 text-amber-400 text-xs font-black rounded-full shadow-md border border-amber-400/60 flex items-center gap-1 animate-bounce z-20">
+                          <Flame size={14} className="text-orange-500 fill-amber-400" />
                           <span>វេនលេង</span>
                         </div>
                       )}
 
                       {/* Team Name Badge */}
-                      <span className={`rounded-lg sm:rounded-xl font-extrabold shadow-xs ${team.badgeBg} text-white ${
-                        isFullscreen ? 'px-2.5 py-1 text-xs sm:text-sm' : 'px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base'
-                      }`}>
+                      <span className={`px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl sm:rounded-2xl text-sm sm:text-base font-extrabold shadow-sm ${team.badgeBg} text-white`}>
                         {team.name}
                       </span>
 
-                      {/* Score Display */}
-                      <div className={`bg-slate-100/95 rounded-lg sm:rounded-xl border border-slate-200/90 shadow-inner ${
-                        isFullscreen ? 'px-2.5 py-1' : 'px-4 py-2 sm:px-5 sm:py-2.5'
-                      }`}>
-                        <span className={`font-black text-purple-950 ${
-                          isFullscreen ? 'text-xs sm:text-base' : 'text-base sm:text-xl'
-                        }`}>
-                          {teamScores[idx]} <span className="text-[10px] sm:text-xs text-slate-500 font-bold">ពិន្ទុ</span>
+                      {/* Score Display (Large Badge) */}
+                      <div className="bg-slate-100/95 px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl sm:rounded-2xl border border-slate-200/90 shadow-inner">
+                        <span className="text-base sm:text-xl font-black text-purple-950">
+                          {teamScores[idx]} <span className="text-xs sm:text-sm text-slate-500 font-bold">ពិន្ទុ</span>
                         </span>
                       </div>
                     </div>
@@ -443,41 +468,31 @@ export default function MysteryBox({ words, topicName, onBack }: MysteryBoxProps
               </div>
             ) : (
               /* INDIVIDUAL MODE SCORE CARD */
-              <div className={`bg-amber-50/95 text-slate-800 rounded-xl sm:rounded-2xl shadow-md border border-amber-300 flex items-center ${
-                isFullscreen ? 'p-1 sm:p-1.5 gap-2' : 'p-2 sm:p-2.5 gap-3'
-              }`}>
-                <span className={`rounded-lg sm:rounded-xl font-extrabold bg-gradient-to-r from-amber-400 to-orange-500 text-purple-950 shadow-xs ${
-                  isFullscreen ? 'px-2.5 py-1 text-xs sm:text-sm' : 'px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base'
-                }`}>
+              <div className="bg-amber-50/95 text-slate-800 p-2 sm:p-2.5 rounded-2xl sm:rounded-3xl shadow-xl border border-amber-300 flex items-center gap-3">
+                <span className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl sm:rounded-2xl text-sm sm:text-base font-extrabold bg-gradient-to-r from-amber-400 to-orange-500 text-purple-950 shadow-xs">
                   👤 ពិន្ទុបុគ្គល
                 </span>
-                <div className={`bg-slate-100/95 rounded-lg sm:rounded-xl border border-slate-200/90 shadow-inner ${
-                  isFullscreen ? 'px-2.5 py-1' : 'px-4 py-2 sm:px-5 sm:py-2.5'
-                }`}>
-                  <span className={`font-black text-purple-950 ${
-                    isFullscreen ? 'text-xs sm:text-base' : 'text-base sm:text-xl'
-                  }`}>
-                    {individualScore} <span className="text-[10px] sm:text-xs text-slate-500 font-bold">ពិន្ទុ</span>
+                <div className="bg-slate-100/95 px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl sm:rounded-2xl border border-slate-200/90 shadow-inner">
+                  <span className="text-base sm:text-xl font-black text-purple-950">
+                    {individualScore} <span className="text-xs sm:text-sm text-slate-500 font-bold">ពិន្ទុ</span>
                   </span>
                 </div>
               </div>
             )}
           </div>
 
-          {/* RIGHT: Action Controls (Settings, History, Fullscreen, Close) */}
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* RIGHT: Action Controls (Settings, History, Fullscreen, Close - White Pills as in reference) */}
+          <div className="flex items-center gap-2.5">
             {/* Settings Modal Toggle Button */}
             <button
               onClick={() => {
                 playClickSound();
                 setIsSettingsOpen(true);
               }}
-              className={`bg-white hover:bg-amber-50 text-purple-950 rounded-xl sm:rounded-2xl shadow-md border border-purple-200/80 transition-all cursor-pointer hover:scale-105 active:scale-95 ${
-                isFullscreen ? 'p-2 sm:p-2.5' : 'p-3 sm:p-3.5'
-              }`}
+              className="p-3 sm:p-3.5 bg-white hover:bg-amber-50 text-purple-950 rounded-2xl sm:rounded-2xl shadow-md border border-purple-200/80 transition-all cursor-pointer hover:scale-105 active:scale-95"
               title="ការកំណត់ផ្សេងៗ"
             >
-              <Settings size={isFullscreen ? 18 : 22} className="text-purple-950" />
+              <Settings size={22} className="text-purple-950" />
             </button>
 
             {/* History Drawer Toggle Button */}
@@ -486,53 +501,47 @@ export default function MysteryBox({ words, topicName, onBack }: MysteryBoxProps
                 playClickSound();
                 setIsHistoryOpen(!isHistoryOpen);
               }}
-              className={`bg-white hover:bg-amber-50 text-purple-950 rounded-xl sm:rounded-2xl shadow-md border border-purple-200/80 transition-all cursor-pointer hover:scale-105 active:scale-95 ${
-                isFullscreen ? 'p-2 sm:p-2.5' : 'p-3 sm:p-3.5'
-              }`}
+              className="p-3 sm:p-3.5 bg-white hover:bg-amber-50 text-purple-950 rounded-2xl sm:rounded-2xl shadow-md border border-purple-200/80 transition-all cursor-pointer hover:scale-105 active:scale-95"
               title="ប្រវត្តិពាក្យ"
             >
-              <History size={isFullscreen ? 18 : 22} className="text-purple-950" />
+              <History size={22} className="text-purple-950" />
             </button>
 
             {/* Fullscreen Button */}
             <button
               onClick={toggleFullscreen}
-              className={`bg-white hover:bg-amber-50 text-purple-950 rounded-xl sm:rounded-2xl shadow-md border border-purple-200/80 transition-all cursor-pointer hover:scale-105 active:scale-95 ${
-                isFullscreen ? 'p-2 sm:p-2.5' : 'p-3 sm:p-3.5'
-              }`}
+              className="p-3 sm:p-3.5 bg-white hover:bg-amber-50 text-purple-950 rounded-2xl sm:rounded-2xl shadow-md border border-purple-200/80 transition-all cursor-pointer hover:scale-105 active:scale-95"
               title={isFullscreen ? "បង្រួមអេក្រង់" : "ពេញអេក្រង់"}
             >
-              {isFullscreen ? <Minimize size={isFullscreen ? 18 : 22} className="text-purple-950" /> : <Maximize size={isFullscreen ? 18 : 22} className="text-purple-950" />}
+              {isFullscreen ? <Minimize size={22} className="text-purple-950" /> : <Maximize size={22} className="text-purple-950" />}
             </button>
 
             {/* Exit/Back Button */}
             <button
               onClick={() => { playClickSound(); onBack(); }}
               id="btn-back-dashboard"
-              className={`bg-rose-500 hover:bg-rose-600 text-white font-black rounded-xl sm:rounded-2xl border border-rose-300/40 shadow-lg transition-all cursor-pointer hover:scale-105 active:scale-95 ${
-                isFullscreen ? 'p-2 sm:p-2.5' : 'p-3 sm:p-3.5'
-              }`}
+              className="p-3 sm:p-3.5 bg-rose-500 hover:bg-rose-600 text-white font-black rounded-2xl sm:rounded-2xl border border-rose-300/40 shadow-lg transition-all cursor-pointer hover:scale-105 active:scale-95"
               title="ចាកចេញ"
             >
-              <X size={isFullscreen ? 18 : 22} />
+              <X size={22} />
             </button>
           </div>
 
         </div>
 
-        {/* Main Stage Card - Purple Studio Backdrop */}
-        <div className={`relative overflow-hidden shadow-2xl border-2 border-purple-500/30 bg-gradient-to-b from-[#6b21a8] via-[#4c1d95] to-[#2e1065] text-white flex flex-col items-center justify-between flex-1 min-h-0 w-full ${
-          isFullscreen ? 'rounded-2xl sm:rounded-3xl p-2 sm:p-3 my-0' : 'rounded-[40px] p-4 sm:p-8 min-h-[540px] sm:min-h-[600px]'
+        {/* Main Stage Card - Purple Studio Backdrop inspired by reference image */}
+        <div className={`relative rounded-3xl sm:rounded-[36px] overflow-hidden shadow-2xl border-2 border-purple-500/30 bg-gradient-to-b from-[#6b21a8] via-[#4c1d95] to-[#2e1065] text-white flex flex-col items-center justify-between ${
+          isFullscreen 
+            ? 'flex-1 h-full w-full min-h-0 p-3 sm:p-5' 
+            : 'min-h-[580px] sm:min-h-[660px] p-4 sm:p-8'
         }`}>
           
-          {/* Ambient Radial Spotlight rays behind mystery box */}
+          {/* Ambient Radial Spotlight rays behind mystery box - GPU Accelerated Light Radial */}
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(251,191,36,0.18)_0%,_rgba(147,51,234,0.1)_50%,_transparent_80%)] pointer-events-none" />
 
           {/* Top Progress Badge: Box X / Total */}
-          <div className={`absolute z-30 bg-amber-400/95 text-purple-950 font-black rounded-full border border-amber-300 shadow-lg flex items-center gap-1.5 ${
-            isFullscreen ? 'top-2.5 left-3 sm:left-4 px-2.5 py-1 text-xs' : 'top-4 left-4 sm:left-6 px-3.5 py-1.5 text-xs sm:text-sm'
-          }`}>
-            <Gift size={isFullscreen ? 14 : 16} className="text-purple-950" />
+          <div className="absolute top-4 left-4 sm:left-6 z-30 px-3.5 py-1.5 bg-amber-400/95 text-purple-950 font-black rounded-full text-xs sm:text-sm border border-amber-300 shadow-lg flex items-center gap-1.5">
+            <Gift size={16} className="text-purple-950" />
             <span>ប្រអប់ទី {Math.min(boxesOpenedCount + 1, totalBoxes)} / {totalBoxes}</span>
           </div>
 
@@ -546,14 +555,14 @@ export default function MysteryBox({ words, topicName, onBack }: MysteryBoxProps
 
           {/* CENTER STAGE: ENLARGED GIFT BOX STAGE */}
           <div 
-            className="relative z-10 w-full flex-1 min-h-0 flex flex-col items-center justify-center cursor-pointer select-none py-0.5" 
+            className="relative z-10 w-full flex-1 min-h-0 flex flex-col items-center justify-center cursor-pointer select-none py-1 sm:py-2" 
             onClick={handleOpenMysteryBox}
           >
             {/* ENLARGED GIFT BOX CONTAINER USING UPLOADED TRANSPARENT PNG IMAGES */}
             <div className={`relative flex items-center justify-center z-10 cursor-pointer transform-gpu ${
               isFullscreen 
-                ? 'w-auto h-[min(44vh,360px)] aspect-[4/3] max-w-[85vw]' 
-                : 'w-[300px] sm:w-[480px] md:w-[540px] h-[320px] sm:h-[440px] md:h-[480px]'
+                ? 'w-[280px] sm:w-[460px] md:w-[540px] lg:w-[600px] h-[300px] sm:h-[420px] md:h-[480px] lg:h-[520px] max-h-[58vh]' 
+                : 'w-[320px] sm:w-[500px] md:w-[580px] h-[340px] sm:h-[460px] md:h-[500px]'
             }`}>
               {/* GIFT BOX TRANSPARENT PNG IMAGE (OPEN / CLOSE) */}
               <AnimatePresence mode="sync">
@@ -648,29 +657,25 @@ export default function MysteryBox({ words, topicName, onBack }: MysteryBoxProps
                 {isOpen && currentWord && (
                   <motion.div
                     key={currentWord.word}
-                    initial={{ y: 20, opacity: 0, scale: 0.4 }}
+                    initial={{ y: 30, opacity: 0, scale: 0.4 }}
                     animate={{ y: 0, opacity: 1, scale: 1 }}
                     exit={{ y: -20, opacity: 0, scale: 0.5 }}
                     transition={{ type: "spring", stiffness: 500, damping: 18 }}
-                    className={`absolute inset-x-2 sm:inset-x-6 z-30 flex flex-col items-center justify-center text-center px-2 pointer-events-auto ${
-                      isFullscreen ? 'top-[6%] sm:top-[8%]' : 'top-[10%] sm:top-[12%]'
-                    }`}
+                    className="absolute top-[10%] sm:top-[12%] inset-x-2 sm:inset-x-6 z-30 flex flex-col items-center justify-center text-center px-2 pointer-events-auto"
                   >
                     {activeLuckyEvent ? (
-                      <div className="flex flex-col items-center justify-center space-y-1 sm:space-y-2 pointer-events-none select-none px-2 max-w-lg">
+                      <div className="flex flex-col items-center justify-center space-y-1.5 sm:space-y-2.5 pointer-events-none select-none px-2 max-w-lg">
                         <motion.span 
-                          animate={{ scale: [1, 1.12, 1], rotate: [0, -8, 8, 0] }}
+                          animate={{ scale: [1, 1.15, 1], rotate: [0, -8, 8, 0] }}
                           transition={{ repeat: Infinity, duration: 1.8 }}
-                          className="text-5xl sm:text-7xl drop-shadow-[0_10px_25px_rgba(0,0,0,0.9)]"
+                          className="text-6xl sm:text-8xl drop-shadow-[0_10px_25px_rgba(0,0,0,0.9)]"
                         >
                           {activeLuckyEvent.icon}
                         </motion.span>
-                        <h2 className={`font-black text-amber-300 tracking-tight leading-tight drop-shadow-[0_8px_25px_rgba(0,0,0,0.95)] font-sans ${
-                          isFullscreen ? 'text-2xl sm:text-4xl md:text-5xl' : 'text-3xl sm:text-5xl md:text-6xl'
-                        }`}>
+                        <h2 className="text-3xl sm:text-5xl md:text-6xl font-black text-amber-300 tracking-tight leading-tight drop-shadow-[0_8px_25px_rgba(0,0,0,0.95)] font-sans">
                           {activeLuckyEvent.title}
                         </h2>
-                        <p className="text-xs sm:text-base font-bold text-white drop-shadow-[0_4px_12px_rgba(0,0,0,0.95)] max-w-md text-center">
+                        <p className="text-sm sm:text-lg font-bold text-white drop-shadow-[0_4px_12px_rgba(0,0,0,0.95)] max-w-md text-center">
                           {activeLuckyEvent.description}
                         </p>
                       </div>
@@ -683,17 +688,11 @@ export default function MysteryBox({ words, topicName, onBack }: MysteryBoxProps
                           speakText(currentWord.word);
                         }}
                         className={`font-black text-amber-300 tracking-tight leading-tight drop-shadow-[0_8px_20px_rgba(0,0,0,0.95)] font-sans px-2 cursor-pointer hover:scale-105 active:scale-95 transition-all select-none ${
-                          isFullscreen
-                            ? (currentWord.word.length <= 8 
-                                ? 'text-4xl sm:text-6xl md:text-7xl' 
-                                : currentWord.word.length <= 20 
-                                  ? 'text-2xl sm:text-4xl md:text-5xl max-w-sm sm:max-w-md' 
-                                  : 'text-lg sm:text-2xl md:text-3xl max-w-xs sm:max-w-lg leading-snug')
-                            : (currentWord.word.length <= 8 
-                                ? 'text-5xl sm:text-7xl md:text-8xl' 
-                                : currentWord.word.length <= 20 
-                                  ? 'text-3xl sm:text-5xl md:text-6xl max-w-sm sm:max-w-md' 
-                                  : 'text-xl sm:text-3xl md:text-4xl max-w-xs sm:max-w-lg leading-snug')
+                          currentWord.word.length <= 8 
+                            ? 'text-5xl sm:text-7xl md:text-8xl' 
+                            : currentWord.word.length <= 20 
+                              ? 'text-3xl sm:text-5xl md:text-6xl max-w-sm sm:max-w-md' 
+                              : 'text-xl sm:text-3xl md:text-4xl max-w-xs sm:max-w-lg leading-snug'
                         }`}
                         title="ចុចដើម្បីស្ដាប់សំឡេងអាន"
                       >
@@ -713,12 +712,10 @@ export default function MysteryBox({ words, topicName, onBack }: MysteryBoxProps
           <AnimatePresence>
             {isOpen && (
               <motion.div
-                initial={{ opacity: 0, y: 20, scale: 0.8 }}
+                initial={{ opacity: 0, y: 25, scale: 0.8 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 20, scale: 0.8 }}
-                className={`absolute left-1/2 -translate-x-1/2 z-40 flex items-center justify-center gap-2.5 sm:gap-4 px-2 sm:px-4 w-full max-w-lg ${
-                  isFullscreen ? 'bottom-2 sm:bottom-3' : 'bottom-4 sm:bottom-6'
-                }`}
+                exit={{ opacity: 0, y: 25, scale: 0.8 }}
+                className={`absolute ${isFullscreen ? 'bottom-2 sm:bottom-4' : 'bottom-4 sm:bottom-6'} left-1/2 -translate-x-1/2 z-40 flex flex-wrap items-center justify-center gap-3 sm:gap-5 px-4 w-full max-w-xl`}
               >
                 {activeLuckyEvent ? (
                   /* Single Action Button for Lucky Event */
@@ -747,11 +744,9 @@ export default function MysteryBox({ words, topicName, onBack }: MysteryBoxProps
                       setActiveLuckyEvent(null);
                       handleNextBox();
                     }}
-                    className={`bg-gradient-to-r ${activeLuckyEvent.bgGradient} text-white font-extrabold rounded-xl sm:rounded-2xl shadow-xl border-2 ${activeLuckyEvent.borderColor} flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 ${
-                      isFullscreen ? 'px-5 py-2.5 sm:px-6 sm:py-3 text-xs sm:text-sm' : 'px-7 py-3.5 text-sm sm:text-base'
-                    }`}
+                    className={`px-7 py-3.5 bg-gradient-to-r ${activeLuckyEvent.bgGradient} text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-xl border-2 ${activeLuckyEvent.borderColor} flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95`}
                   >
-                    <Sparkles size={isFullscreen ? 18 : 22} className="text-white animate-spin" />
+                    <Sparkles size={22} className="text-white animate-spin" />
                     <span>
                       {activeLuckyEvent.scoreChange > 0
                         ? `ទទួលយកពិន្ទុ Free (+${activeLuckyEvent.scoreChange} ពិន្ទុ)`
@@ -771,12 +766,10 @@ export default function MysteryBox({ words, topicName, onBack }: MysteryBoxProps
                         if (enableSound) playClickSound();
                         handleNextBox(); // Close box & cycle turn to next team
                       }}
-                      className={`bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white font-extrabold rounded-xl sm:rounded-2xl shadow-xl shadow-rose-950/50 border-2 border-rose-300/40 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer transition-all active:scale-95 ${
-                        isFullscreen ? 'px-4 py-2 sm:px-6 sm:py-2.5 text-xs sm:text-sm' : 'px-5 py-3 sm:px-7 sm:py-3.5 text-sm sm:text-base'
-                      }`}
+                      className="px-5 py-3 sm:px-7 sm:py-3.5 bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-xl shadow-rose-950/50 border-2 border-rose-300/40 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95"
                       title="អានមិនត្រឹមត្រូវ (មិនបូកពិន្ទុ)"
                     >
-                      <XCircle size={isFullscreen ? 18 : 22} className="text-white" />
+                      <XCircle size={22} className="text-white" />
                       <span>អានមិនត្រឹមត្រូវ</span>
                     </motion.button>
 
@@ -804,12 +797,10 @@ export default function MysteryBox({ words, topicName, onBack }: MysteryBoxProps
                         }
                         handleNextBox(); // Close box & cycle turn to next team
                       }}
-                      className={`bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-extrabold rounded-xl sm:rounded-2xl shadow-xl shadow-emerald-950/50 border-2 border-emerald-300/40 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer transition-all active:scale-95 ${
-                        isFullscreen ? 'px-4 py-2 sm:px-6 sm:py-2.5 text-xs sm:text-sm' : 'px-5 py-3 sm:px-7 sm:py-3.5 text-sm sm:text-base'
-                      }`}
+                      className="px-5 py-3 sm:px-7 sm:py-3.5 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-xl shadow-emerald-950/50 border-2 border-emerald-300/40 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95"
                       title="អានបានត្រឹមត្រូវ (បូក ១៥ ពិន្ទុ)"
                     >
-                      <CheckCircle2 size={isFullscreen ? 18 : 22} className="text-white" />
+                      <CheckCircle2 size={22} className="text-white" />
                       <span>អានបានត្រឹមត្រូវ</span>
                     </motion.button>
                   </>

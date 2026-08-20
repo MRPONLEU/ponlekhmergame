@@ -217,10 +217,10 @@ export default function LuckyDraw({ words, topicName, onBack }: LuckyDrawProps) 
           {/* Main Slot Machine Display (Col 8 or 12 in fullscreen) */}
           <div className={`${isFullscreen ? 'w-full h-full flex flex-col items-center justify-center' : 'lg:col-span-8 flex flex-col items-center'}`}>
             
-            <div ref={machineCardRef} className={`w-full bg-white ${isFullscreen ? 'h-full max-w-none rounded-none border-none shadow-none flex flex-col justify-between items-center p-4 sm:p-8 relative overflow-hidden' : 'p-8 sm:p-12 border border-border-beige rounded-[36px] soft-shadow flex flex-col items-center relative overflow-hidden'}`}>
+            <div ref={machineCardRef} className={`w-full bg-white ${isFullscreen ? 'h-full max-w-none rounded-none border-none shadow-none flex flex-col justify-center items-center p-8 sm:p-20 relative' : 'p-8 sm:p-12 border border-border-beige rounded-[36px] soft-shadow flex flex-col items-center relative overflow-hidden'}`}>
               
               {/* Top controls: Badge left, Sound & Fullscreen right */}
-              <div className="w-full flex items-center justify-between mb-2 sm:mb-4 shrink-0">
+              <div className="w-full flex items-center justify-between mb-4">
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-sage/10 text-sage rounded-full text-xs font-bold border border-sage/20">
                   <Sparkles size={14} className="animate-spin" />
                   <span>Lucky Word Machine</span>
@@ -248,7 +248,7 @@ export default function LuckyDraw({ words, topicName, onBack }: LuckyDrawProps) 
               </div>
 
               {/* Slot window */}
-              <div className={`w-full ${isFullscreen ? 'max-w-5xl flex-1 max-h-[58vh] my-2' : 'max-w-md h-52 sm:h-60 my-4 sm:my-8'} bg-gradient-to-b from-[#F9F7F2] to-[#f0ece1] border-2 border-border-beige rounded-3xl flex flex-col items-center justify-center p-4 sm:p-6 relative shadow-inner overflow-hidden transition-all duration-300`}>
+              <div className={`w-full ${isFullscreen ? 'max-w-6xl h-[68vh] sm:h-[78vh]' : 'max-w-md h-52 sm:h-60'} bg-gradient-to-b from-[#F9F7F2] to-[#f0ece1] border-2 border-border-beige rounded-3xl flex flex-col items-center justify-center p-6 relative my-4 sm:my-8 shadow-inner overflow-hidden transition-all duration-300`}>
                 
                 {/* Glowing ring animation behind */}
                 {isRolling && (
@@ -265,9 +265,9 @@ export default function LuckyDraw({ words, topicName, onBack }: LuckyDrawProps) 
                       transition={{ duration: isRolling ? 0.08 : 0.3 }}
                       className="text-center z-10 px-4"
                     >
-                      <h2 className={`font-extrabold text-charcoal tracking-tight my-2 drop-shadow-sm font-sans ${
+                      <h2 className={`font-extrabold text-charcoal tracking-tight my-4 drop-shadow-sm font-sans ${
                         isFullscreen 
-                          ? (displayWord.word.length > 15 ? 'text-2xl sm:text-4xl md:text-5xl leading-snug px-4' : 'text-4xl sm:text-6xl md:text-7xl leading-none')
+                          ? (displayWord.word.length > 15 ? 'text-3xl sm:text-6xl leading-snug px-4' : 'text-6xl sm:text-9xl leading-none')
                           : (displayWord.word.length > 15 ? 'text-xl sm:text-2xl px-2' : 'text-3xl sm:text-5xl')
                       }`}>
                         {displayWord.word}
@@ -275,9 +275,9 @@ export default function LuckyDraw({ words, topicName, onBack }: LuckyDrawProps) 
                     </motion.div>
                   ) : (
                     <div className="text-center z-10 px-4">
-                      <Gift size={isFullscreen ? 64 : 48} className="mx-auto text-clay mb-3 sm:mb-4 animate-bounce" />
-                      <p className={`font-bold text-charcoal ${isFullscreen ? 'text-2xl sm:text-3xl mb-1' : 'text-lg'}`}>ចាប់ពាក្យសំណាង</p>
-                      <p className={`text-soft-gray ${isFullscreen ? 'text-sm sm:text-base' : 'text-xs'}`}>ចុចប៊ូតុង "ចាប់ផ្ដើម" ខាងក្រោមដើម្បីចាប់ពាក្យសំណាង!</p>
+                      <Gift size={isFullscreen ? 96 : 48} className="mx-auto text-clay mb-6 animate-bounce" />
+                      <p className={`font-bold text-charcoal ${isFullscreen ? 'text-4xl sm:text-5xl mb-3' : 'text-lg'}`}>ចាប់ពាក្យសំណាង</p>
+                      <p className={`text-soft-gray ${isFullscreen ? 'text-2xl' : 'text-xs'}`}>ចុចប៊ូតុង "ចាប់ផ្ដើម" ខាងក្រោមដើម្បីចាប់ពាក្យសំណាង!</p>
                     </div>
                   )}
                 </AnimatePresence>
@@ -288,13 +288,13 @@ export default function LuckyDraw({ words, topicName, onBack }: LuckyDrawProps) 
                 onClick={startLuckyDraw}
                 disabled={isRolling}
                 id="btn-start-lucky-draw"
-                className={`w-full ${isFullscreen ? 'max-w-2xl py-3.5 sm:py-4 px-8 text-xl sm:text-2xl shadow-xl shrink-0 mt-2' : 'max-w-md py-4 px-8 text-lg mt-6'} rounded-3xl font-bold text-white transition-all flex items-center justify-center gap-4 cursor-pointer ${
+                className={`w-full ${isFullscreen ? 'max-w-3xl py-7 px-16 text-3xl sm:text-4xl shadow-2xl' : 'max-w-md py-4 px-8 text-lg'} rounded-3xl font-bold text-white transition-all flex items-center justify-center gap-5 cursor-pointer mt-6 ${
                   isRolling 
                     ? 'bg-clay/70 cursor-not-allowed animate-pulse' 
                     : 'bg-clay hover:bg-[#b86d47] active:scale-95'
                 }`}
               >
-                <Sparkles size={isFullscreen ? 28 : 22} className={isRolling ? 'animate-spin' : ''} />
+                <Sparkles size={isFullscreen ? 42 : 22} className={isRolling ? 'animate-spin' : ''} />
                 <span>{isRolling ? 'កំពុងចាប់ពាក្យសំណាង...' : (isFinishedMessage ? 'ចាប់ផ្ដើមសាថ្មី' : 'ចាប់ផ្ដើម (Lucky Draw)')}</span>
               </button>
 
