@@ -29,8 +29,15 @@ import {
   Check,
   XCircle,
   Crown,
-  Award
+  Award,
+  Type,
+  FileText,
+  UserCheck,
+  UserX,
+  Edit3
 } from 'lucide-react';
+import { isSentenceItem } from '../utils/khmerSplit';
+import { DEFAULT_NAMES } from '../data';
 
 interface MysteryTeam {
   id: number;
@@ -170,24 +177,74 @@ export default function MysteryBox({ words, topicName, onBack }: MysteryBoxProps
   const [luckyBoxChance, setLuckyBoxChance] = React.useState<number>(0.25); // 25% chance
   const [activeLuckyEvent, setActiveLuckyEvent] = React.useState<LuckyEvent | null>(null);
 
+  // Content Mode: 'words' (បើកពាក្យ), 'passages' (បើកអត្ថបទខ្លី), 'names' (ចាប់ឈ្មោះ)
+  const [contentMode, setContentMode] = React.useState<'words' | 'passages' | 'names'>('words');
+  const [studentNames, setStudentNames] = React.useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('khmer_student_names');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return DEFAULT_NAMES;
+  });
+  const [isEditingNames, setIsEditingNames] = React.useState<boolean>(false);
+  const [namesInputText, setNamesInputText] = React.useState<string>(studentNames.join('\n'));
+
+  // Save student names to local storage
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('khmer_student_names', JSON.stringify(studentNames));
+    } catch (e) {}
+  }, [studentNames]);
+
+  // Active Content Items according to Content Mode
+  const activeContentItems = React.useMemo<WordItem[]>(() => {
+    if (contentMode === 'names') {
+      return studentNames.map(name => ({
+        word: name,
+        wordType: 'ឈ្មោះសិស្ស',
+        parts: [],
+        definition: 'សិស្សត្រូវបានជ្រើសរើសឡើងអាន ឬឆ្លើយសំណួរ',
+        example: ''
+      }));
+    }
+
+    if (contentMode === 'passages') {
+      const passages = words.filter(w => isSentenceItem(w));
+      if (passages.length > 0) return passages;
+      // Fallback: convert items or examples to passages
+      return words.map(w => ({
+        ...w,
+        word: w.example ? w.example : (w.definition || w.word),
+        wordType: 'អត្ថបទខ្លី'
+      }));
+    }
+
+    // Default 'words' mode
+    const wordsOnly = words.filter(w => !isSentenceItem(w));
+    return wordsOnly.length > 0 ? wordsOnly : words;
+  }, [words, contentMode, studentNames]);
+
   // Available categories
   const categories = React.useMemo(() => {
     const cats = new Set<string>();
-    words.forEach(w => {
+    activeContentItems.forEach(w => {
       if (w.wordType) cats.add(w.wordType);
     });
     return ['ទាំងអស់', ...Array.from(cats)];
-  }, [words]);
+  }, [activeContentItems]);
 
   // Filter words based on selected category
   const filteredWords = React.useMemo(() => {
-    if (selectedCategory === 'ទាំងអស់') return words;
-    return words.filter(w => w.wordType === selectedCategory);
-  }, [words, selectedCategory]);
+    if (selectedCategory === 'ទាំងអស់') return activeContentItems;
+    return activeContentItems.filter(w => w.wordType === selectedCategory);
+  }, [activeContentItems, selectedCategory]);
 
   // Reset/sync remaining words when category changes or manual reset
   const resetGame = React.useCallback(() => {
-    const source = filteredWords.length > 0 ? filteredWords : words;
+    const source = filteredWords.length > 0 ? filteredWords : activeContentItems;
     setRemainingWords([...source].sort(() => Math.random() - 0.5));
     setOpenedHistory([]);
     setIsOpen(false);
@@ -196,7 +253,13 @@ export default function MysteryBox({ words, topicName, onBack }: MysteryBoxProps
     setBoxesOpenedCount(0);
     setIsGameOver(false);
     setActiveLuckyEvent(null);
-  }, [filteredWords, words]);
+  }, [filteredWords, activeContentItems]);
+
+  // Sync remaining words when content mode, words or studentNames change
+  React.useEffect(() => {
+    setSelectedCategory('ទាំងអស់');
+    resetGame();
+  }, [contentMode, words, studentNames, resetGame]);
 
   // Preload images instantly on mount for zero initial lag
   React.useEffect(() => {
@@ -304,7 +367,15 @@ export default function MysteryBox({ words, topicName, onBack }: MysteryBoxProps
         }
       }
       if (enableConfetti && (!luckyEvt || luckyEvt.scoreChange > 0)) triggerConfetti();
-      if (autoSpeak && !isLuckyDraw) { setTimeout(() => speakText(picked.word), 150); }
+      if (autoSpeak && !isLuckyDraw) { 
+        setTimeout(() => {
+          if (contentMode === 'names') {
+            speakText(`សូមអញ្ជើញ ${picked.word}`);
+          } else {
+            speakText(picked.word);
+          }
+        }, 150); 
+      }
       return;
     }
 
@@ -340,7 +411,11 @@ export default function MysteryBox({ words, topicName, onBack }: MysteryBoxProps
       // Voice reading
       if (autoSpeak && !isLuckyDraw) {
         setTimeout(() => {
-          speakText(picked.word);
+          if (contentMode === 'names') {
+            speakText(`សូមអញ្ជើញ ${picked.word}`);
+          } else {
+            speakText(picked.word);
+          }
         }, 150);
       }
     }, shakeDuration);
@@ -424,9 +499,21 @@ export default function MysteryBox({ words, topicName, onBack }: MysteryBoxProps
         {/* PURPLE GRADIENT NAVIGATION BAR - FULL WIDTH & PROPORTIONALLY LARGE */}
         <div className="w-full bg-gradient-to-r from-[#581c87] via-[#4c1d95] to-[#3b0764] py-3 sm:py-3.5 px-4 sm:px-6 rounded-2xl sm:rounded-3xl border border-purple-400/30 shadow-2xl flex flex-wrap items-center justify-between gap-3 text-white shrink-0">
           
-          {/* LEFT: Team / Individual Score Cards (Large & Prominent) */}
+          {/* LEFT: Team / Individual Score Cards OR Student Names Header */}
           <div className="flex flex-wrap items-center gap-3.5">
-            {playMode === 'team' ? (
+            {contentMode === 'names' ? (
+              <div className="flex items-center gap-2.5 bg-amber-50/95 text-slate-800 p-2 sm:p-2.5 rounded-2xl sm:rounded-3xl shadow-xl border border-amber-300">
+                <span className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl sm:rounded-2xl text-sm sm:text-base font-extrabold bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs flex items-center gap-2">
+                  <UserCheck size={18} />
+                  <span>🎯 ចាប់ឈ្មោះសិស្ស</span>
+                </span>
+                <div className="bg-slate-100/95 px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl sm:rounded-2xl border border-slate-200/90 shadow-inner">
+                  <span className="text-base sm:text-xl font-black text-purple-950">
+                    សិស្សសរុប ៖ <span className="text-purple-700 font-black">{studentNames.length}</span> នាក់
+                  </span>
+                </div>
+              </div>
+            ) : playMode === 'team' ? (
               <div className="flex flex-wrap items-center gap-3">
                 {DEFAULT_TEAMS_DATA.slice(0, teamCount).map((team, idx) => {
                   const isActive = activeTeamIndex === idx;
@@ -535,11 +622,23 @@ export default function MysteryBox({ words, topicName, onBack }: MysteryBoxProps
           {/* Ambient Radial Spotlight rays behind mystery box - GPU Accelerated Light Radial */}
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(251,191,36,0.18)_0%,_rgba(147,51,234,0.1)_50%,_transparent_80%)] pointer-events-none" />
 
-          {/* Top Progress Badge: Box X / Total */}
-          <div className="absolute top-4 left-4 sm:left-6 z-30 px-3.5 py-1.5 bg-amber-400/95 text-purple-950 font-black rounded-full text-xs sm:text-sm border border-amber-300 shadow-lg flex items-center gap-1.5">
-            <Gift size={16} className="text-purple-950" />
-            <span>ប្រអប់ទី {Math.min(boxesOpenedCount + 1, totalBoxes)} / {totalBoxes}</span>
-          </div>
+          {/* Top Progress Badge: Box X / Total OR Student Count & Mode Badge (Hidden during 'names' mode) */}
+          {contentMode !== 'names' && (
+            <div className="absolute top-4 left-4 sm:left-6 z-30 flex items-center gap-2 flex-wrap">
+              <div className="px-3.5 py-1.5 bg-amber-400/95 text-purple-950 font-black rounded-full text-xs sm:text-sm border border-amber-300 shadow-lg flex items-center gap-1.5">
+                <Gift size={16} className="text-purple-950" />
+                <span>ប្រអប់ទី {Math.min(boxesOpenedCount + 1, totalBoxes)} / {totalBoxes}</span>
+              </div>
+
+              <div className="px-3 py-1.5 bg-purple-900/90 text-amber-300 font-extrabold rounded-full text-xs border border-purple-400/40 shadow-lg flex items-center gap-1.5 backdrop-blur-sm">
+                {contentMode === 'words' && <Type size={14} />}
+                {contentMode === 'passages' && <FileText size={14} />}
+                <span>
+                  {contentMode === 'words' ? 'បើកពាក្យ' : 'បើកអត្ថបទខ្លី'}
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Floating Background Particles */}
           <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-30">
@@ -676,24 +775,44 @@ export default function MysteryBox({ words, topicName, onBack }: MysteryBoxProps
                         </p>
                       </div>
                     ) : (
-                      /* Word Main Text Only */
-                      <h2 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          playClickSound();
-                          speakText(currentWord.word);
-                        }}
-                        className={`font-black text-amber-300 tracking-tight leading-tight drop-shadow-[0_8px_20px_rgba(0,0,0,0.95)] font-sans px-2 cursor-pointer hover:scale-105 active:scale-95 transition-all select-none ${
-                          currentWord.word.length <= 8 
-                            ? 'text-5xl sm:text-7xl md:text-8xl' 
-                            : currentWord.word.length <= 20 
-                              ? 'text-3xl sm:text-5xl md:text-6xl max-w-sm sm:max-w-md' 
-                              : 'text-xl sm:text-3xl md:text-4xl max-w-xs sm:max-w-lg leading-snug'
-                        }`}
-                        title="ចុចដើម្បីស្ដាប់សំឡេងអាន"
-                      >
-                        {currentWord.word}
-                      </h2>
+                      /* Word / Passage / Student Name Display */
+                      <div className="flex flex-col items-center justify-center space-y-1 sm:space-y-2 pointer-events-auto select-none">
+                        {contentMode === 'names' && (
+                          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-400 text-purple-950 font-black rounded-full text-xs sm:text-sm shadow-lg mb-1 animate-bounce">
+                            <UserCheck size={16} />
+                            <span>🎉 ឈ្មោះសិស្ស ៖</span>
+                          </div>
+                        )}
+                        {contentMode === 'passages' && (
+                          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-500/90 text-amber-200 font-extrabold rounded-full text-xs sm:text-sm shadow-lg mb-1 border border-indigo-300/40">
+                            <FileText size={16} />
+                            <span>📖 អត្ថបទខ្លី ៖</span>
+                          </div>
+                        )}
+                        <h2 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            playClickSound();
+                            if (contentMode === 'names') {
+                              speakText(`សូមអញ្ជើញ ${currentWord.word}`);
+                            } else {
+                              speakText(currentWord.word);
+                            }
+                          }}
+                          className={`font-black text-amber-300 tracking-tight leading-tight drop-shadow-[0_8px_20px_rgba(0,0,0,0.95)] font-sans px-2 cursor-pointer hover:scale-105 active:scale-95 transition-all ${
+                            contentMode === 'names'
+                              ? 'text-4xl sm:text-6xl md:text-7xl'
+                              : currentWord.word.length <= 8 
+                                ? 'text-5xl sm:text-7xl md:text-8xl' 
+                                : currentWord.word.length <= 20 
+                                  ? 'text-3xl sm:text-5xl md:text-6xl max-w-sm sm:max-w-md' 
+                                  : 'text-xl sm:text-3xl md:text-4xl max-w-xs sm:max-w-lg leading-snug'
+                          }`}
+                          title="ចុចដើម្បីស្ដាប់សំឡេងអាន"
+                        >
+                          {currentWord.word}
+                        </h2>
+                      </div>
                     )}
                   </motion.div>
                 )}
@@ -751,6 +870,45 @@ export default function MysteryBox({ words, topicName, onBack }: MysteryBoxProps
                           : 'រំលងវេន (បន្តទៅក្រុមបន្ទាប់)'}
                     </span>
                   </motion.button>
+                ) : contentMode === 'names' ? (
+                  <>
+                    {/* Red Button: Remove Name (ដកឈ្មោះចេញ) */}
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (enableSound) playClickSound();
+                        if (currentWord) {
+                          const nameToRemove = currentWord.word;
+                          setStudentNames(prev => prev.filter(n => n !== nameToRemove));
+                          setRemainingWords(prev => prev.filter(w => w.word !== nameToRemove));
+                        }
+                        handleNextBox();
+                      }}
+                      className="px-5 py-3 sm:px-7 sm:py-3.5 bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-xl shadow-rose-950/50 border-2 border-rose-300/40 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95"
+                      title="ដកឈ្មោះសិស្សនេះចេញពីបញ្ជី"
+                    >
+                      <UserX size={22} className="text-white" />
+                      <span>ដកឈ្មោះចេញ</span>
+                    </motion.button>
+
+                    {/* Green Button: Next (បន្ទាប់) */}
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (enableSound) playClickSound();
+                        handleNextBox();
+                      }}
+                      className="px-5 py-3 sm:px-7 sm:py-3.5 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-xl shadow-emerald-950/50 border-2 border-emerald-300/40 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95"
+                      title="បន្តទៅចាប់ឈ្មោះបន្ទាប់"
+                    >
+                      <ArrowRight size={22} className="text-white" />
+                      <span>បន្ទាប់</span>
+                    </motion.button>
+                  </>
                 ) : (
                   <>
                     {/* Red Button: Read Incorrectly (អានមិនត្រឹមត្រូវ) */}
@@ -895,42 +1053,173 @@ export default function MysteryBox({ words, topicName, onBack }: MysteryBoxProps
 
                 {/* Settings Options */}
                 <div className="space-y-5">
-                  {/* Option 1: Play Mode */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-800 flex items-center justify-between">
-                      <span>របៀបលេង (Play Mode)</span>
-                      <span className="text-xs font-semibold text-purple-600">{playMode === 'team' ? 'លេងជាក្រុម' : 'លេងជាបុគ្គល'}</span>
+                  {/* Option 1: Play Mode (Hide when catching names) */}
+                  {contentMode !== 'names' && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-800 flex items-center justify-between">
+                        <span>របៀបលេង (Play Mode)</span>
+                        <span className="text-xs font-semibold text-purple-600">{playMode === 'team' ? 'លេងជាក្រុម' : 'លេងជាបុគ្គល'}</span>
+                      </label>
+                      <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-2xl border border-slate-200">
+                        <button
+                          onClick={() => {
+                            playClickSound();
+                            setPlayMode('individual');
+                          }}
+                          className={`py-2 px-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                            playMode === 'individual'
+                              ? 'bg-purple-600 text-white shadow-md'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          <User size={16} />
+                          <span>បុគ្គល</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            playClickSound();
+                            setPlayMode('team');
+                          }}
+                          className={`py-2 px-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                            playMode === 'team'
+                              ? 'bg-purple-600 text-white shadow-md'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          <Users size={16} />
+                          <span>ជាក្រុម</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Option: Content Mode (មាតិកាក្នុងប្រអប់សំណាង ៖ បើកពាក្យ, បើកអត្ថបទខ្លី, ចាប់ឈ្មោះ) */}
+                  <div className="space-y-2.5 p-3.5 bg-purple-50/90 rounded-2xl border border-purple-200">
+                    <label className="text-sm font-extrabold text-slate-800 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-purple-900">
+                        <Sliders size={16} className="text-purple-600" />
+                        <span>មាតិកាក្នុងប្រអប់សំណាង</span>
+                      </span>
+                      <span className="text-xs font-bold text-purple-700 bg-purple-100 px-2.5 py-0.5 rounded-full border border-purple-200">
+                        {contentMode === 'words' ? 'បើកពាក្យ' : contentMode === 'passages' ? 'បើកអត្ថបទខ្លី' : 'ចាប់ឈ្មោះ'}
+                      </span>
                     </label>
-                    <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-2xl border border-slate-200">
+
+                    <div className="grid grid-cols-3 gap-2">
                       <button
+                        type="button"
                         onClick={() => {
                           playClickSound();
-                          setPlayMode('individual');
+                          setContentMode('words');
                         }}
-                        className={`py-2 px-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                          playMode === 'individual'
-                            ? 'bg-purple-600 text-white shadow-md'
-                            : 'text-slate-600 hover:text-slate-900'
+                        className={`py-2.5 px-2 rounded-xl text-xs sm:text-sm font-bold flex flex-col sm:flex-row items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                          contentMode === 'words'
+                            ? 'bg-purple-600 text-white shadow-md scale-102'
+                            : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
                         }`}
                       >
-                        <User size={16} />
-                        <span>បុគ្គល</span>
+                        <Type size={16} />
+                        <span>បើកពាក្យ</span>
                       </button>
+
                       <button
+                        type="button"
                         onClick={() => {
                           playClickSound();
-                          setPlayMode('team');
+                          setContentMode('passages');
                         }}
-                        className={`py-2 px-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                          playMode === 'team'
-                            ? 'bg-purple-600 text-white shadow-md'
-                            : 'text-slate-600 hover:text-slate-900'
+                        className={`py-2.5 px-2 rounded-xl text-xs sm:text-sm font-bold flex flex-col sm:flex-row items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                          contentMode === 'passages'
+                            ? 'bg-purple-600 text-white shadow-md scale-102'
+                            : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
                         }`}
                       >
-                        <Users size={16} />
-                        <span>ជាក្រុម</span>
+                        <FileText size={16} />
+                        <span>បើកអត្ថបទខ្លី</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          playClickSound();
+                          setContentMode('names');
+                        }}
+                        className={`py-2.5 px-2 rounded-xl text-xs sm:text-sm font-bold flex flex-col sm:flex-row items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                          contentMode === 'names'
+                            ? 'bg-purple-600 text-white shadow-md scale-102'
+                            : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                        }`}
+                      >
+                        <UserCheck size={16} />
+                        <span>ចាប់ឈ្មោះ</span>
                       </button>
                     </div>
+
+                    {/* Expandable Name Management when contentMode === 'names' */}
+                    {contentMode === 'names' && (
+                      <div className="pt-2 mt-2 border-t border-purple-200/60 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-slate-700">
+                            បញ្ជីឈ្មោះសិស្ស ({studentNames.length} នាក់)
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              playClickSound();
+                              setIsEditingNames(!isEditingNames);
+                              setNamesInputText(studentNames.join('\n'));
+                            }}
+                            className="text-xs font-bold text-purple-700 hover:text-purple-900 flex items-center gap-1 bg-white px-2.5 py-1 rounded-lg border border-purple-200 cursor-pointer"
+                          >
+                            <Edit3 size={12} />
+                            <span>{isEditingNames ? 'បិទកែប្រែ' : 'កែប្រែបញ្ជីឈ្មោះ'}</span>
+                          </button>
+                        </div>
+
+                        {isEditingNames && (
+                          <div className="space-y-2 bg-white p-3 rounded-xl border border-purple-200">
+                            <label className="text-[11px] font-semibold text-slate-500">
+                              បញ្ចូលឈ្មោះសិស្ស (១ ឈ្មោះ ក្នុងមួយបន្ទាត់) ៖
+                            </label>
+                            <textarea
+                              rows={4}
+                              value={namesInputText}
+                              onChange={(e) => setNamesInputText(e.target.value)}
+                              className="w-full text-xs font-medium p-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
+                              placeholder="ឈ្មោះសិស្សទី១&#10;ឈ្មោះសិស្សទី២"
+                            />
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  playClickSound();
+                                  setStudentNames(DEFAULT_NAMES);
+                                  setNamesInputText(DEFAULT_NAMES.join('\n'));
+                                  setIsEditingNames(false);
+                                }}
+                                className="px-2.5 py-1 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                              >
+                                កំណត់ដើមវិញ
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  playClickSound();
+                                  const parsed = namesInputText.split('\n').map(s => s.trim()).filter(Boolean);
+                                  if (parsed.length > 0) {
+                                    setStudentNames(parsed);
+                                  }
+                                  setIsEditingNames(false);
+                                }}
+                                className="px-3 py-1 text-xs font-bold bg-purple-600 text-white rounded-lg shadow cursor-pointer hover:bg-purple-700"
+                              >
+                                រក្សាទុក
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Option 2: Shaking Duration */}
