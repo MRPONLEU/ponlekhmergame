@@ -594,12 +594,15 @@ export default function WordSearch({ words, topicName, onBack }: WordSearchProps
               display: flex;
               align-items: center;
               justify-content: space-between;
+              padding-top: 6px;
               padding-bottom: 8px;
+              overflow: visible;
             }
             .logo-title {
               display: flex;
               align-items: center;
               gap: 14px;
+              overflow: visible;
             }
             .logo-box {
               width: 54px;
@@ -616,18 +619,26 @@ export default function WordSearch({ words, topicName, onBack }: WordSearchProps
               width: 32px;
               height: 32px;
             }
+            .title-text {
+              overflow: visible;
+              padding-top: 4px;
+            }
             .title-text h1 {
-              font-size: 24px;
+              font-size: 25px;
               font-weight: 900;
               margin: 0;
               color: #1c1917;
-              line-height: 1.2;
+              line-height: 1.6;
+              padding-top: 6px;
+              overflow: visible;
             }
             .title-text p {
               font-size: 13px;
               font-weight: 600;
               color: #64748b;
-              margin: 3px 0 0 0;
+              margin: 4px 0 0 0;
+              line-height: 1.5;
+              overflow: visible;
             }
             .student-info {
               text-align: right;
@@ -646,11 +657,12 @@ export default function WordSearch({ words, topicName, onBack }: WordSearchProps
             }
             .instruction-text {
               font-size: 16px;
-              line-height: 1.7;
+              line-height: 1.8;
               color: #1c1917;
               margin-bottom: 24px;
               text-align: center;
               font-weight: normal;
+              overflow: visible;
             }
             .instruction-text strong {
               font-weight: normal;
@@ -684,8 +696,9 @@ export default function WordSearch({ words, topicName, onBack }: WordSearchProps
               font-family: 'Battambang', 'Kantumruy Pro', 'Nokora', sans-serif;
               font-weight: normal;
               font-size: 28px;
-              line-height: 1.2;
-              padding-top: 1px;
+              line-height: 1.4;
+              padding-top: 2px;
+              overflow: visible;
             }
             .list-header {
               display: flex;
@@ -695,7 +708,9 @@ export default function WordSearch({ words, topicName, onBack }: WordSearchProps
               font-weight: 900;
               color: #0f172a;
               margin-bottom: 18px;
-              padding-top: 0;
+              padding-top: 4px;
+              line-height: 1.5;
+              overflow: visible;
             }
             .words-grid {
               display: grid;
@@ -722,6 +737,9 @@ export default function WordSearch({ words, topicName, onBack }: WordSearchProps
               font-size: 18px;
               color: #1c1917;
               white-space: nowrap;
+              line-height: 1.5;
+              padding-top: 2px;
+              overflow: visible;
             }
             @media print {
               .no-print {

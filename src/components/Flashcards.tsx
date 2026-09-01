@@ -645,8 +645,10 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
             padding: 4px 14px;
             font-size: 12pt;
             font-weight: 700;
+            line-height: 1.5;
             z-index: 12;
             box-shadow: none;
+            overflow: visible;
           }
           
           .card-word {
@@ -656,17 +658,21 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
             color: var(--card-color);
             margin: 0;
             text-shadow: 2px 2px 0px rgba(0,0,0,0.1);
-            line-height: 1.2;
+            line-height: 1.35;
+            padding: 6px 0;
             text-align: center;
             z-index: 12;
+            overflow: visible;
           }
           
           .card-def {
             font-size: 20pt;
             color: #334155;
             margin: 15px 0 0 0;
+            line-height: 1.5;
             text-align: center;
             z-index: 12;
+            overflow: visible;
           }
           
           .cut-line {
@@ -772,9 +778,8 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
             `;
           } else {
             const word = activeWords[globalCardIndex - 1];
-            const typeDisplay = word.wordType 
-              ? (word.wordType.includes('អំណាន') ? word.wordType : 'អំណាន ៖ ' + word.wordType)
-              : 'អំណាន ៖ ពាក្យ';
+            const cleanType = word.wordType ? word.wordType.replace(/^អំណាន\s*[:៖]?\s*/i, '').trim() : '';
+            const typeDisplay = cleanType || (topicName || 'ពាក្យ');
 
             htmlContent += `
               <div class="card ${hasFrame ? 'has-frame' : ''}" data-frame-id="${cardFrameId}" data-title-pos="${cardTitlePos}" data-original-color="${color}" style="--card-color: ${color};">
@@ -1275,7 +1280,7 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
                         ? 'right-16 text-right'
                         : 'left-6 text-left'
                   } ${isFlipped ? 'bg-white/10 text-stone-200 border-0 rounded-full px-4 py-1.5' : 'bg-white/80 text-[var(--card-color)] border-0 shadow-none rounded-full px-4 py-1.5'}`}>
-                    {currentWord.wordType ? (currentWord.wordType.includes('អំណាន') ? currentWord.wordType : 'អំណាន ៖ ' + currentWord.wordType) : 'អំណាន ៖ ពាក្យ'}
+                    {currentWord.wordType ? currentWord.wordType.replace(/^អំណាន\s*[:៖]?\s*/i, '').trim() || (topicName || 'ពាក្យ') : (topicName || 'ពាក្យ')}
                   </div>
                   
                   {/* Flip Indicator and Play (Fullscreen) */}
@@ -1492,7 +1497,7 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
                           <span className={`absolute top-1 z-20 text-[9px] font-bold text-amber-900 bg-white border border-amber-300 px-2 py-0.5 rounded-full shadow-2xs ${
                             currentPos === 'center' ? 'left-1/2 -translate-x-1/2' : currentPos === 'right' ? 'right-1' : 'left-1'
                           }`}>
-                            អំណាន...
+                            ចំណងជើង...
                           </span>
                         </div>
 
@@ -1609,7 +1614,7 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
                         <span className={`text-[10px] font-bold text-amber-900 bg-white border border-amber-300 rounded-full px-2.5 py-0.5 shadow-2xs absolute top-2 z-30 ${
                           titlePos === 'center' ? 'left-1/2 -translate-x-1/2 text-center' : titlePos === 'right' ? 'right-2 text-right' : 'left-2 text-left'
                         }`}>
-                          អំណាន...
+                          ចំណងជើង...
                         </span>
                         <span className="text-xs font-bold text-charcoal font-['Kh-MPS-Temple'] relative z-20 mt-3">
                           បណ្ណទី{idx + 1}
@@ -1779,7 +1784,7 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
                             ? 'right-3 text-right'
                             : 'left-3 text-left'
                       }`}>
-                        អំណាន ៖ ពាក្យ
+                        ពាក្យ
                       </span>
 
                       <span className="text-lg font-bold text-charcoal relative z-20 font-['Kh-MPS-Temple'] mt-3">
