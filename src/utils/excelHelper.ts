@@ -193,7 +193,7 @@ export async function parseMultiSheetTopicExcel(file: File): Promise<{
             const word = (row['ពាក្យ'] || row['ពាក្យពិបាក'] || row['Word'] || row['word'] || '').toString().trim();
             if (!word) return;
 
-            const wordType = (row['ប្រភេទពាក្យ/កម្រិត'] || row['ប្រភេទពាក្យ'] || row['ប្រភេទ'] || row['Type'] || row['type'] || 'ពាក្យពិបាក').toString().trim();
+            const wordType = (row['ប្រភេទពាក្យ/កម្រិត'] || row['ប្រភេទពាក្យ'] || row['ប្រភេទ'] || row['ចំណងជើង'] || row['Type'] || row['type'] || 'ពាក្យពិបាក').toString().trim();
             const definition = (row['និយមន័យ'] || row['អត្ថន័យ'] || row['Definition'] || row['definition'] || '').toString().trim();
             const example = (row['ឧទាហរណ៍'] || row['Example'] || row['example'] || '').toString().trim();
 

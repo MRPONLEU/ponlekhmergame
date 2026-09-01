@@ -107,7 +107,7 @@ const vibrantBgColors = [
   'bg-teal-500',
 ];
 
-export default function Flashcards({ words, onBack }: FlashcardsProps) {
+export default function Flashcards({ words, topicName, onBack }: FlashcardsProps) {
   const [filterType, setFilterType] = useState('ទាំងអស់');
 
   const uniqueWordTypes = React.useMemo(() => {
@@ -259,14 +259,12 @@ export default function Flashcards({ words, onBack }: FlashcardsProps) {
 
   const handleDeleteFrame = (idToDelete: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm('តើអ្នកពិតជាចង់លុបស៊ុមនេះចេញពីបណ្ណាល័យមែនទេ?')) {
-      playClickSound();
-      setSavedFrames(prev => prev.filter(f => f.id !== idToDelete));
-      if (activeFrameId === idToDelete) {
-        setActiveFrameId('none');
-      }
-      setSlotFrameIds(prev => prev.map(id => id === idToDelete ? 'none' : id) as [string, string, string]);
+    playClickSound();
+    setSavedFrames(prev => prev.filter(f => f.id !== idToDelete));
+    if (activeFrameId === idToDelete) {
+      setActiveFrameId('none');
     }
+    setSlotFrameIds(prev => prev.map(id => id === idToDelete ? 'none' : id) as [string, string, string]);
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -358,7 +356,8 @@ export default function Flashcards({ words, onBack }: FlashcardsProps) {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
     
-    const pages = Math.ceil(activeWords.length / 3);
+    const totalCards = activeWords.length + 1;
+    const pages = Math.ceil(totalCards / 3);
     const borderColors = ['#3B82F6', '#F97316', '#16A34A', '#A855F7', '#E11D48', '#0D9488'];
     
     let htmlContent = `
@@ -637,17 +636,22 @@ export default function Flashcards({ words, onBack }: FlashcardsProps) {
           
           .card-top-left {
             position: absolute;
-            top: 15px;
-            left: 20px;
+            top: 18px;
+            left: 24px;
             color: var(--card-color);
-            font-size: 13pt;
-            font-weight: 600;
+            background: rgba(255, 255, 255, 0.8);
+            border: none;
+            border-radius: 9999px;
+            padding: 4px 14px;
+            font-size: 12pt;
+            font-weight: 700;
             z-index: 12;
+            box-shadow: none;
           }
           
           .card-word {
             font-family: var(--card-font-family);
-            font-size: 64pt;
+            font-size: var(--card-font-size, 64pt);
             font-weight: normal;
             color: var(--card-color);
             margin: 0;
@@ -705,6 +709,26 @@ export default function Flashcards({ words, onBack }: FlashcardsProps) {
                 <option value="slots" ${frameSelectionMode === 'slots' ? 'selected' : ''}>🎨 កំណត់តាមបណ្ណ 1, 2, 3 (Set per Card)</option>
               </select>
             </div>
+            <div class="control-group">
+              <label>ពណ៌ពាក្យ៖</label>
+              <select id="colorModeSelect" class="font-select">
+                <option value="multi">🎨 ពណ៌ចម្រុះតាមបណ្ណ</option>
+                <option value="uniform">📌 ពណ៌ដូចគ្នាគ្រប់បណ្ណ</option>
+              </select>
+            </div>
+            <div id="uniformColorContainer" class="control-group" style="display: none; align-items: center; gap: 4px;">
+              <button class="color-dot" data-color="#3B82F6" style="background: #3B82F6; width: 22px; height: 22px; border-radius: 50%; border: 2px solid white; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);"></button>
+              <button class="color-dot" data-color="#F97316" style="background: #F97316; width: 22px; height: 22px; border-radius: 50%; border: 2px solid white; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);"></button>
+              <button class="color-dot" data-color="#16A34A" style="background: #16A34A; width: 22px; height: 22px; border-radius: 50%; border: 2px solid white; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);"></button>
+              <button class="color-dot" data-color="#A855F7" style="background: #A855F7; width: 22px; height: 22px; border-radius: 50%; border: 2px solid white; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);"></button>
+              <button class="color-dot" data-color="#E11D48" style="background: #E11D48; width: 22px; height: 22px; border-radius: 50%; border: 2px solid white; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);"></button>
+              <button class="color-dot" data-color="#0D9488" style="background: #0D9488; width: 22px; height: 22px; border-radius: 50%; border: 2px solid white; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);"></button>
+              <input type="color" id="customColorPicker" value="#3B82F6" style="width: 26px; height: 26px; border: none; cursor: pointer; border-radius: 50%; background: none;" title="ជ្រើសរើសពណ៌ផ្ទាល់ខ្លួន" />
+            </div>
+            <div class="control-group">
+              <label>ទំហំពាក្យ៖ <span id="fontSizeVal">64pt</span></label>
+              <input type="range" id="fontSizeSlider" min="30" max="100" value="64" style="width: 80px; cursor: pointer; accent-color: #2563eb;" />
+            </div>
             <button class="btn" id="resetBtn">🔄 កំណត់ឡើងវិញ</button>
             <button class="btn active-color" id="colorBtn">🎨 ពណ៌ធម្មជាតិ</button>
             <button class="btn" id="bwBtn">⚫ ស-ខ្មៅ (សន្សំថ្នាំ)</button>
@@ -716,25 +740,16 @@ export default function Flashcards({ words, onBack }: FlashcardsProps) {
     for (let i = 0; i < pages; i++) {
       htmlContent += `<div class="page">`;
       
-      const wordsForPage = activeWords.slice(i * 3, i * 3 + 3);
-      
       for (let idx = 0; idx < 3; idx++) {
-        const word = wordsForPage[idx];
-        const cardGlobalIndex = i * 3 + idx;
+        const globalCardIndex = i * 3 + idx;
         
-        // Render cut-line if idx > 0 and the previous card was visible
-        if (idx > 0 && wordsForPage[idx - 1]) {
+        // Render cut-line if idx > 0 and the previous card on this page exists
+        if (idx > 0 && globalCardIndex < totalCards) {
           htmlContent += `<div class="cut-line"></div>`;
         }
         
-        if (word) {
-          const color = borderColors[cardGlobalIndex % borderColors.length];
-          
-          // Avoid duplicating "អំណាន ៖" if wordType already contains it
-          const typeDisplay = word.wordType 
-            ? (word.wordType.includes('អំណាន') ? word.wordType : 'អំណាន ៖ ' + word.wordType)
-            : 'អំណាន ៖ ពាក្យ';
-
+        if (globalCardIndex < totalCards) {
+          const color = borderColors[globalCardIndex % borderColors.length];
           const cardFrameId = frameSelectionMode === 'slots' ? (slotFrameIds[idx] || 'none') : activeFrameId;
           const cardFrameUrl = getFrameUrlById(cardFrameId);
           const cardTitlePos = getFrameTitlePosById(cardFrameId);
@@ -744,16 +759,33 @@ export default function Flashcards({ words, onBack }: FlashcardsProps) {
           if (cardFrameUrl) {
             frameMarkup = `<img src="${cardFrameUrl}" class="custom-frame-overlay" />`;
           }
-            
-          htmlContent += `
-            <div class="card ${hasFrame ? 'has-frame' : ''}" data-frame-id="${cardFrameId}" data-title-pos="${cardTitlePos}" style="--card-color: ${color};">
-              ${frameMarkup}
-              <div class="card-inner">
-                <div class="card-top-left">${typeDisplay}</div>
-                <h2 class="card-word">${word.word}</h2>
+
+          if (globalCardIndex === 0) {
+            const titleText = topicName || 'ប័ណ្ណពាក្យ';
+            htmlContent += `
+              <div class="card ${hasFrame ? 'has-frame' : ''}" data-frame-id="${cardFrameId}" data-title-pos="${cardTitlePos}" data-original-color="${color}" style="--card-color: ${color};">
+                ${frameMarkup}
+                <div class="card-inner">
+                  <h2 class="card-word" style="font-size: 32pt;">${titleText}</h2>
+                </div>
               </div>
-            </div>
-          `;
+            `;
+          } else {
+            const word = activeWords[globalCardIndex - 1];
+            const typeDisplay = word.wordType 
+              ? (word.wordType.includes('អំណាន') ? word.wordType : 'អំណាន ៖ ' + word.wordType)
+              : 'អំណាន ៖ ពាក្យ';
+
+            htmlContent += `
+              <div class="card ${hasFrame ? 'has-frame' : ''}" data-frame-id="${cardFrameId}" data-title-pos="${cardTitlePos}" data-original-color="${color}" style="--card-color: ${color};">
+                ${frameMarkup}
+                <div class="card-inner">
+                  <div class="card-top-left">${typeDisplay}</div>
+                  <h2 class="card-word">${word.word}</h2>
+                </div>
+              </div>
+            `;
+          }
         } else {
           // Render an invisible placeholder card to preserve the exact same layout spacing
           htmlContent += `
@@ -776,9 +808,23 @@ export default function Flashcards({ words, onBack }: FlashcardsProps) {
           window.slotFrameIds = ${JSON.stringify(slotFrameIds)};
 
           const borderSelect = document.getElementById('borderSelect');
+          const colorModeSelect = document.getElementById('colorModeSelect');
+          const uniformColorContainer = document.getElementById('uniformColorContainer');
+          const colorDots = document.querySelectorAll('.color-dot');
+          const customColorPicker = document.getElementById('customColorPicker');
+          const fontSizeSlider = document.getElementById('fontSizeSlider');
+          const fontSizeVal = document.getElementById('fontSizeVal');
           const resetBtn = document.getElementById('resetBtn');
           const colorBtn = document.getElementById('colorBtn');
           const bwBtn = document.getElementById('bwBtn');
+
+          let currentUniformColor = '#3B82F6';
+
+          fontSizeSlider.addEventListener('input', (e) => {
+            const val = e.target.value + 'pt';
+            fontSizeVal.textContent = val;
+            document.documentElement.style.setProperty('--card-font-size', val);
+          });
 
           borderSelect.addEventListener('change', (e) => {
             const val = e.target.value;
@@ -803,16 +849,74 @@ export default function Flashcards({ words, onBack }: FlashcardsProps) {
               }
             });
           });
+
+          colorModeSelect.addEventListener('change', (e) => {
+            const mode = e.target.value;
+            const cards = document.querySelectorAll('.card');
+            if (mode === 'uniform') {
+              uniformColorContainer.style.display = 'flex';
+              cards.forEach(card => {
+                card.style.setProperty('--card-color', currentUniformColor);
+              });
+            } else {
+              uniformColorContainer.style.display = 'none';
+              cards.forEach(card => {
+                const orig = card.getAttribute('data-original-color');
+                if (orig) {
+                  card.style.setProperty('--card-color', orig);
+                }
+              });
+            }
+            document.documentElement.style.setProperty('--is-bw', '0');
+            document.documentElement.classList.remove('bw-mode');
+            bwBtn.classList.remove('active-color');
+            colorBtn.classList.add('active-color');
+          });
+
+          colorDots.forEach(dot => {
+            dot.addEventListener('click', (e) => {
+              colorDots.forEach(d => d.style.borderColor = 'white');
+              e.target.style.borderColor = '#000';
+              currentUniformColor = e.target.getAttribute('data-color');
+              customColorPicker.value = currentUniformColor;
+              if (colorModeSelect.value === 'uniform') {
+                const cards = document.querySelectorAll('.card');
+                cards.forEach(card => {
+                  card.style.setProperty('--card-color', currentUniformColor);
+                });
+              }
+            });
+          });
+
+          customColorPicker.addEventListener('input', (e) => {
+            currentUniformColor = e.target.value;
+            colorDots.forEach(d => d.style.borderColor = 'white');
+            if (colorModeSelect.value === 'uniform') {
+              const cards = document.querySelectorAll('.card');
+              cards.forEach(card => {
+                card.style.setProperty('--card-color', currentUniformColor);
+              });
+            }
+          });
           
           resetBtn.addEventListener('click', () => {
             borderSelect.value = "none";
+            colorModeSelect.value = "multi";
+            uniformColorContainer.style.display = 'none';
+            fontSizeSlider.value = "64";
+            fontSizeVal.textContent = "64pt";
+            document.documentElement.style.setProperty('--card-font-size', '64pt');
             document.documentElement.style.setProperty('--card-border-style', "solid");
             document.documentElement.style.setProperty('--card-font-family', "'Kh-MPS-Temple', 'Kantumruy Pro', sans-serif");
             document.documentElement.style.setProperty('--is-bw', '0');
             document.documentElement.classList.remove('bw-mode');
             colorBtn.classList.add('active-color');
             bwBtn.classList.remove('active-color');
-            document.querySelectorAll('.card').forEach(c => c.classList.remove('has-frame'));
+            document.querySelectorAll('.card').forEach(c => {
+              c.classList.remove('has-frame');
+              const orig = c.getAttribute('data-original-color');
+              if (orig) c.style.setProperty('--card-color', orig);
+            });
             document.querySelectorAll('.card .custom-frame-overlay').forEach(el => el.remove());
           });
           
@@ -1164,13 +1268,13 @@ export default function Flashcards({ words, onBack }: FlashcardsProps) {
                   )}
 
                   {/* Title Position Label on Card */}
-                  <div className={`absolute top-6 z-[50] text-xs font-bold px-3 py-1.5 rounded-xl transition-all ${
+                  <div className={`absolute top-6 z-[50] text-xs font-bold px-4 py-1.5 rounded-full transition-all ${
                     activeStudyFrameTitlePos === 'center'
                       ? 'left-1/2 -translate-x-1/2 text-center'
                       : activeStudyFrameTitlePos === 'right'
                         ? 'right-16 text-right'
                         : 'left-6 text-left'
-                  } ${isFlipped ? 'bg-white/10 text-stone-200' : 'bg-amber-100/90 text-amber-900 border border-amber-300 shadow-xs'}`}>
+                  } ${isFlipped ? 'bg-white/10 text-stone-200 border-0 rounded-full px-4 py-1.5' : 'bg-white/80 text-[var(--card-color)] border-0 shadow-none rounded-full px-4 py-1.5'}`}>
                     {currentWord.wordType ? (currentWord.wordType.includes('អំណាន') ? currentWord.wordType : 'អំណាន ៖ ' + currentWord.wordType) : 'អំណាន ៖ ពាក្យ'}
                   </div>
                   
@@ -1384,8 +1488,8 @@ export default function Flashcards({ words, onBack }: FlashcardsProps) {
                       >
                         {/* Frame Thumbnail Preview */}
                         <div className="w-full h-16 bg-slate-100 rounded-xl overflow-hidden relative border border-slate-200/80 flex items-center justify-center">
-                          <img src={frame.url} alt={frame.name} className="w-full h-full object-fill" />
-                          <span className={`absolute top-1 z-20 text-[9px] font-bold text-amber-900 bg-amber-100/90 border border-amber-300 px-1.5 py-0.2 rounded ${
+                          <img src={frame.url} alt={frame.name} className="w-full h-full object-fill" onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }} />
+                          <span className={`absolute top-1 z-20 text-[9px] font-bold text-amber-900 bg-white border border-amber-300 px-2 py-0.5 rounded-full shadow-2xs ${
                             currentPos === 'center' ? 'left-1/2 -translate-x-1/2' : currentPos === 'right' ? 'right-1' : 'left-1'
                           }`}>
                             អំណាន...
@@ -1477,7 +1581,7 @@ export default function Flashcards({ words, onBack }: FlashcardsProps) {
                         {/* Mini Slot Preview */}
                         <div className="mt-2 h-14 bg-slate-50 border rounded-lg relative overflow-hidden flex items-center justify-center">
                           {getFrameUrlById(slotFrameIds[slotIdx]) ? (
-                            <img src={getFrameUrlById(slotFrameIds[slotIdx])} alt="Slot Frame" className="w-full h-full object-fill" />
+                            <img src={getFrameUrlById(slotFrameIds[slotIdx])} alt="Slot Frame" className="w-full h-full object-fill" onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }} />
                           ) : (
                             <span className="text-[10px] text-gray-400 font-bold">គ្មានស៊ុម</span>
                           )}
@@ -1500,9 +1604,9 @@ export default function Flashcards({ words, onBack }: FlashcardsProps) {
                     return (
                       <div key={idx} className="flex-1 h-24 sm:h-28 bg-white rounded-xl relative flex flex-col items-center justify-center p-2 shadow-sm overflow-hidden border-2 border-amber-400">
                         {frameUrl && (
-                          <img src={frameUrl} alt="Frame Overlay" className="absolute inset-0 w-full h-full object-fill pointer-events-none z-10" />
+                          <img src={frameUrl} alt="Frame Overlay" className="absolute inset-0 w-full h-full object-fill pointer-events-none z-10" onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }} />
                         )}
-                        <span className={`text-[10px] font-bold text-amber-800 font-['Kh-MPS-Temple'] absolute top-2 z-30 ${
+                        <span className={`text-[10px] font-bold text-amber-900 bg-white border border-amber-300 rounded-full px-2.5 py-0.5 shadow-2xs absolute top-2 z-30 ${
                           titlePos === 'center' ? 'left-1/2 -translate-x-1/2 text-center' : titlePos === 'right' ? 'right-2 text-right' : 'left-2 text-left'
                         }`}>
                           អំណាន...
@@ -1665,10 +1769,10 @@ export default function Flashcards({ words, onBack }: FlashcardsProps) {
                       </span>
                     </div>
                     <div className="w-full h-28 bg-white rounded-xl border border-amber-300 overflow-hidden relative flex items-center justify-center p-3 shadow-inner">
-                      <img src={newFramePreview} alt="Preview" className="absolute inset-0 w-full h-full object-fill pointer-events-none z-10" />
+                      <img src={newFramePreview} alt="Preview" className="absolute inset-0 w-full h-full object-fill pointer-events-none z-10" onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }} />
                       
                       {/* Dynamic Title Position in Live Preview */}
-                      <span className={`absolute top-2 z-30 text-[11px] font-bold text-amber-900 bg-amber-100/90 border border-amber-300 px-2 py-0.5 rounded-md ${
+                      <span className={`absolute top-2 z-30 text-[11px] font-bold text-amber-900 bg-white border border-amber-300 px-3 py-1 rounded-full shadow-xs ${
                         newFrameTitlePos === 'center'
                           ? 'left-1/2 -translate-x-1/2 text-center'
                           : newFrameTitlePos === 'right'

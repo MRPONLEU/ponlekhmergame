@@ -18,7 +18,8 @@ import {
   Download,
   Printer,
   Layers,
-  FileText
+  FileText,
+  Settings
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { playClickSound, playSuccessSound, playWinSound, speakText } from '../utils/audio';
@@ -29,20 +30,6 @@ interface WordSearchProps {
   topicName?: string;
   onBack: () => void;
 }
-
-// 10 School words from the user's printed worksheet image
-const WORKSHEET_WORDS = [
-  { word: "សម្រេចចិត្ត", definition: "សម្រេចចិត្តធ្វើអ្វីមួយដោយច្បាស់លាស់", wordType: "កិរិយាសព្ទ" },
-  { word: "មាតាបិតា", definition: "ឪពុកម្តាយ ឬអ្នកអាណាព្យាបាល", wordType: "នាម" },
-  { word: "មធ្យោបាយ", definition: "ផ្លូវ វិធី ឬគ្រឿងសម្រាប់សម្រេចការងារ", wordType: "នាម" },
-  { word: "សប្តាហ៍", definition: "រយៈពេលប្រាំពីរថ្ងៃ", wordType: "នាម" },
-  { word: "រំលេច", definition: "ធ្វើឲ្យលេចធ្លោឡើង ឬលម្អឲ្យស្អាត", wordType: "កិរិយាសព្ទ" },
-  { word: "ទូលំទូលាយ", definition: "ធំទូលាយ មិនចង្អៀតចង្អល់", wordType: "គុណនាម" },
-  { word: "ផ្អិតផ្អៀង", definition: "ផ្អិតចូលគ្នា ឬលំអៀងទៅរកគ្នា", wordType: "កិរិយាសព្ទ" },
-  { word: "ម៉ត់ចត់", definition: "ប្រុងប្រយ័ត្ន ល្អិតល្អន់ ហ្មត់ចត់", wordType: "គុណនាម" },
-  { word: "ច្រណែន", definition: "មានចិត្តមិនសុខចិត្តពេលឃើញអ្នកដទៃបានល្អ", wordType: "កិរិយាសព្ទ" },
-  { word: "ណែនាំ", definition: "បង្ហាញផ្លូវ ឬប្រាប់ឲ្យដឹងពីរបៀបធ្វើ", wordType: "កិរិយាសព្ទ" }
-];
 
 const GRID_SIZE = 12;
 
@@ -207,14 +194,20 @@ function createSingleGrid(targetList: WordItem[]): { grid: string[][], placedWor
   return { grid: finalGrid, placedWords: finalPlacedWords };
 }
 
-export default function WordSearch({ words, onBack }: WordSearchProps) {
+export default function WordSearch({ words, topicName, onBack }: WordSearchProps) {
   // Gameplay states
-  const [usePreset, setUsePreset] = React.useState(true);
   const [studentName, setStudentName] = React.useState('');
   const [studentDate, setStudentDate] = React.useState(() => {
     const today = new Date();
     return `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
   });
+  
+  const [filterType, setFilterType] = React.useState<string>('ទាំងអស់');
+  
+  const uniqueWordTypes = React.useMemo(() => {
+    const types = new Set(words.map(w => w.wordType || 'មិនស្គាល់'));
+    return ['ទាំងអស់', ...Array.from(types)];
+  }, [words]);
   
   const [gameWords, setGameWords] = React.useState<WordItem[]>([]);
   const [grid, setGrid] = React.useState<string[][]>([]);
@@ -224,6 +217,11 @@ export default function WordSearch({ words, onBack }: WordSearchProps) {
   const [startCell, setStartCell] = React.useState<CellCoords | null>(null);
   const [hoveredCell, setHoveredCell] = React.useState<CellCoords | null>(null);
   const [failedSelection, setFailedSelection] = React.useState<CellCoords[] | null>(null);
+  
+  // Manual selection states
+  const [showSettingsModal, setShowSettingsModal] = React.useState(false);
+  const [isManualSelection, setIsManualSelection] = React.useState(false);
+  const [manualSelectedWords, setManualSelectedWords] = React.useState<string[]>([]);
   
   // Progress states
   const [foundWords, setFoundWords] = React.useState<string[]>([]);
@@ -256,13 +254,7 @@ export default function WordSearch({ words, onBack }: WordSearchProps) {
         return;
       }
 
-      const targetList = gameWords.length > 0 ? gameWords : WORKSHEET_WORDS.map(w => ({
-        word: w.word,
-        wordType: w.wordType,
-        parts: splitKhmerWordToUnits(w.word),
-        definition: w.definition,
-        example: ""
-      }));
+      const targetList = gameWords;
 
       // Map the colors for solutions cleanly to high-quality pastel colors
       const colorsMap: Record<string, string> = {
@@ -842,29 +834,49 @@ export default function WordSearch({ words, onBack }: WordSearchProps) {
   };
 
   
-  // Load or generate game word list
-  React.useEffect(() => {
-    let selectedList: WordItem[] = [];
-    if (usePreset) {
-      selectedList = WORKSHEET_WORDS.map(w => ({
-        word: w.word,
-        wordType: w.wordType,
-        parts: splitKhmerWordToUnits(w.word),
-        definition: w.definition,
-        example: ""
-      }));
-    } else {
-      // Use custom words (filtering out sentences/passages), limit to 10 for a great game size
-      const singleWords = words.filter(w => !isSentenceItem(w));
-      selectedList = (singleWords.length > 0 ? singleWords : words).slice(0, 10);
+  const generateNewGame = React.useCallback(() => {
+    // Filter by type
+    let filtered = words;
+    if (filterType !== 'ទាំងអស់') {
+      filtered = words.filter(w => (w.wordType || 'មិនស្គាល់') === filterType);
     }
+    
+    // Use custom words (filtering out sentences/passages)
+    const singleWords = filtered.filter(w => !isSentenceItem(w));
+    const sourceArray = singleWords.length > 0 ? singleWords : filtered;
+
+    let selectedList: WordItem[] = [];
+
+    if (isManualSelection && manualSelectedWords.length > 0) {
+      // Keep only manually selected words that exist in the current source array
+      selectedList = sourceArray.filter(w => manualSelectedWords.includes(w.word));
+      if (selectedList.length === 0) {
+        // Fallback if none of the manually selected words match the filter
+        const shuffled = [...sourceArray].sort(() => Math.random() - 0.5);
+        selectedList = shuffled.slice(0, 10);
+      }
+    } else {
+      // Sort randomly to mix words each time
+      const shuffled = [...sourceArray].sort(() => Math.random() - 0.5);
+      selectedList = shuffled.slice(0, 10);
+    }
+    
     setGameWords(selectedList);
     generateGameGrid(selectedList);
-  }, [usePreset, words]);
+  }, [filterType, words, isManualSelection, manualSelectedWords]);
+
+  // Initial load or when filter changes
+  React.useEffect(() => {
+    generateNewGame();
+  }, [filterType, words]); // Intentionally not including isManualSelection and manualSelectedWords here so it doesn't regenerate as user clicks checkboxes in settings.
 
   // Main grid generation function
   const generateGameGrid = (targetList: WordItem[]) => {
-    if (targetList.length === 0) return;
+    if (targetList.length === 0) {
+      setGrid([]);
+      setPlacedWords([]);
+      return;
+    }
 
     const { grid: finalGrid, placedWords: finalPlacedWords } = createSingleGrid(targetList);
 
@@ -879,7 +891,13 @@ export default function WordSearch({ words, onBack }: WordSearchProps) {
 
   const handleRestart = () => {
     playClickSound();
-    generateGameGrid(gameWords);
+    generateNewGame();
+  };
+
+  const handleSaveSettings = () => {
+    playClickSound();
+    setShowSettingsModal(false);
+    generateNewGame();
   };
 
   const toggleFullscreen = () => {
@@ -1084,6 +1102,19 @@ export default function WordSearch({ words, onBack }: WordSearchProps) {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={filterType}
+                onChange={(e) => { 
+                  playClickSound(); 
+                  setFilterType(e.target.value); 
+                }}
+                className="bg-white text-charcoal font-bold text-xs px-3.5 py-2.5 rounded-xl border border-border-beige focus:outline-none focus:border-amber-400 cursor-pointer shadow-sm hover:bg-stone-50"
+              >
+                {uniqueWordTypes.map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+
               <button
                 onClick={() => { playClickSound(); setShowSolutions(!showSolutions); }}
                 className={`px-3.5 py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
@@ -1094,6 +1125,15 @@ export default function WordSearch({ words, onBack }: WordSearchProps) {
               >
                 {showSolutions ? <EyeOff size={15} /> : <Eye size={15} />}
                 <span>{showSolutions ? 'លាក់ចម្លើយ' : 'បង្ហាញចម្លើយ'}</span>
+              </button>
+
+              <button
+                onClick={() => { playClickSound(); setShowSettingsModal(true); }}
+                className="px-3.5 py-2.5 bg-white hover:bg-stone-bg border border-border-beige text-charcoal rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer"
+                title="ការកំណត់ពាក្យ"
+              >
+                <Settings size={15} />
+                <span className="hidden sm:inline">ការកំណត់</span>
               </button>
 
               <button
@@ -1440,6 +1480,125 @@ export default function WordSearch({ words, onBack }: WordSearchProps) {
                   >
                     <Printer size={16} />
                     <span>បង្កើត & បោះពុម្ព ({worksheetCount} សន្លឹក)</span>
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Settings Modal */}
+        <AnimatePresence>
+          {showSettingsModal && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/40 backdrop-blur-sm"
+            >
+              <motion.div 
+                initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                className="bg-white rounded-[32px] p-6 max-w-lg w-full shadow-2xl border border-border-beige flex flex-col max-h-[90vh]"
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
+                      <Settings size={20} />
+                    </div>
+                    <h3 className="text-xl font-black text-charcoal">ការកំណត់ពាក្យ</h3>
+                  </div>
+                  <button 
+                    onClick={() => setShowSettingsModal(false)}
+                    className="p-2 text-soft-gray hover:text-charcoal hover:bg-stone-bg rounded-full transition-all cursor-pointer"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto pr-2 space-y-5 custom-scrollbar">
+                  <div className="bg-stone-50 border border-border-beige rounded-2xl p-4">
+                    <label className="flex items-center gap-3 cursor-pointer select-none">
+                      <input 
+                        type="checkbox"
+                        checked={isManualSelection}
+                        onChange={(e) => {
+                          playClickSound();
+                          setIsManualSelection(e.target.checked);
+                        }}
+                        className="w-5 h-5 accent-sage rounded-md cursor-pointer"
+                      />
+                      <div>
+                        <div className="font-bold text-charcoal text-sm">ជ្រើសរើសពាក្យដោយខ្លួនឯង</div>
+                        <div className="text-xs text-soft-gray mt-1">ប្រសិនបើមិនជ្រើសរើស កម្មវិធីនឹងទាញយក ១០ ពាក្យដោយចៃដន្យ។</div>
+                      </div>
+                    </label>
+                  </div>
+
+                  {isManualSelection && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between px-1">
+                        <span className="text-sm font-bold text-charcoal">ជ្រើសរើសពាក្យ (អតិបរមា ១០ ពាក្យ)</span>
+                        <span className="text-xs font-bold text-sage-dark bg-sage/20 px-2 py-1 rounded-md">{manualSelectedWords.length} / 10</span>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-2">
+                        {(() => {
+                          let filtered = words;
+                          if (filterType !== 'ទាំងអស់') {
+                            filtered = words.filter(w => (w.wordType || 'មិនស្គាល់') === filterType);
+                          }
+                          const singleWords = filtered.filter(w => !isSentenceItem(w));
+                          const sourceArray = singleWords.length > 0 ? singleWords : filtered;
+
+                          return sourceArray.map((w, i) => {
+                            const isSelected = manualSelectedWords.includes(w.word);
+                            return (
+                              <label key={i} className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer select-none transition-all ${
+                                isSelected 
+                                  ? 'bg-sage/10 border-sage/40' 
+                                  : 'bg-white border-border-beige hover:border-soft-gray'
+                              }`}>
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={(e) => {
+                                    playClickSound();
+                                    if (e.target.checked) {
+                                      if (manualSelectedWords.length < 10) {
+                                        setManualSelectedWords([...manualSelectedWords, w.word]);
+                                      }
+                                    } else {
+                                      setManualSelectedWords(manualSelectedWords.filter(word => word !== w.word));
+                                    }
+                                  }}
+                                  className="w-4 h-4 accent-sage cursor-pointer rounded"
+                                />
+                                <span className={`text-sm font-bold truncate ${isSelected ? 'text-sage-dark' : 'text-charcoal'}`}>
+                                  {w.word}
+                                </span>
+                              </label>
+                            );
+                          });
+                        })()}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3 mt-6 pt-4 border-t border-border-beige shrink-0">
+                  <button
+                    onClick={() => setShowSettingsModal(false)}
+                    className="flex-1 py-3.5 bg-stone-100 hover:bg-stone-200 text-charcoal font-bold rounded-2xl text-sm transition-all cursor-pointer border border-border-beige"
+                  >
+                    បោះបង់
+                  </button>
+                  <button
+                    onClick={handleSaveSettings}
+                    className="flex-1 py-3.5 bg-clay hover:bg-clay-dark text-white font-extrabold rounded-2xl text-sm transition-all cursor-pointer shadow-md"
+                  >
+                    អនុវត្ត
                   </button>
                 </div>
               </motion.div>

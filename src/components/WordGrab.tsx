@@ -148,13 +148,31 @@ export default function WordGrab({ words, topics, activeTopicId, onBack }: WordG
   const lastFpsCheckRef = useRef<number>(performance.now());
   const lastFrameTimeRef = useRef<number>(performance.now());
 
+  // Word Category Selection
+  const [filterType, setFilterType] = useState<string>('ទាំងអស់');
+
+  const uniqueWordTypes = React.useMemo(() => {
+    const types = new Set(words.map(w => w.wordType || 'មិនស្គាល់'));
+    return ['ទាំងអស់', ...Array.from(types)];
+  }, [words]);
+
   // Synchronize active words pool
   const wordList = React.useMemo(() => {
+    let filtered = words;
+    if (filterType !== 'ទាំងអស់') {
+      filtered = words.filter(w => (w.wordType || 'មិនស្គាល់') === filterType);
+    }
+    
+    if (filtered && filtered.length > 0) {
+      // Shuffle the words for randomness
+      const list = filtered.map(w => w.word.trim()).filter(Boolean);
+      return list.sort(() => Math.random() - 0.5);
+    }
     if (words && words.length > 0) {
       return words.map(w => w.word.trim()).filter(Boolean);
     }
     return ['មាតុភូមិ', 'សិល្បៈ', 'វប្បធម៌', 'កុមារ', 'សាលារៀន', 'វិជ្ជា', 'សាមគ្គី', 'មិត្តភាព', 'អក្សរសាស្ត្រ', 'កីឡា'];
-  }, [words]);
+  }, [words, filterType]);
 
   useEffect(() => {
     p1ScoreRef.current = p1Score;
@@ -1395,6 +1413,23 @@ export default function WordGrab({ words, topics, activeTopicId, onBack }: WordG
                     placeholder="ឈ្មោះសិស្ស ខ"
                   />
                 </div>
+              </div>
+
+              {/* Category Filter */}
+              <div className="bg-slate-800/80 rounded-2xl border border-slate-700 p-3.5 text-left flex items-center justify-between">
+                <span className="text-sm font-bold text-slate-300">ប្រភេទពាក្យ៖</span>
+                <select
+                  value={filterType}
+                  onChange={(e) => { 
+                    if (soundEnabled) playClickSound(); 
+                    setFilterType(e.target.value); 
+                  }}
+                  className="bg-slate-900 text-amber-300 font-bold text-sm px-3 py-1.5 rounded-lg border border-slate-700 focus:outline-none cursor-pointer min-w-[150px]"
+                >
+                  {uniqueWordTypes.map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
               </div>
 
               {/* Action Button: Go to Hand Scanner */}
