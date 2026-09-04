@@ -27,7 +27,8 @@ import {
   Save,
   AlignLeft,
   AlignCenter,
-  AlignRight
+  AlignRight,
+  Type
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { playClickSound, playSuccessSound, speakText } from '../utils/audio';
@@ -103,6 +104,162 @@ export const getStudyCardTitlePositionClasses = (pos?: string): string => {
     default: return 'top-8 sm:top-9 left-6 text-left';
   }
 };
+
+export interface KhmerFontOption {
+  id: string;
+  name: string;
+  fontFamily: string;
+  fontWeight?: number | string;
+  sample: string;
+  description: string;
+}
+
+export const KHMER_FONTS: KhmerFontOption[] = [
+  { 
+    id: 'battambang', 
+    name: 'បាត់ដំបង (Battambang - ដិត 700)', 
+    fontFamily: "'Battambang', sans-serif",
+    fontWeight: 700,
+    sample: 'ដោយយល់ឃើញថា',
+    description: 'អក្សរស្ដង់ដារសៀវភៅសិក្សាគោល អក្សរដិត Bold 700'
+  },
+  { 
+    id: 'hanuman', 
+    name: 'ហនុមាន (Hanuman - ដិត 700)', 
+    fontFamily: "'Hanuman', serif",
+    fontWeight: 700,
+    sample: 'ដោយយល់ឃើញថា',
+    description: 'អក្សរស្អាតបែបក្បាច់ប្រពៃណីខ្មែរ (Bold 700)'
+  },
+  { 
+    id: 'temple', 
+    name: 'អក្សរឆ្លាក់ប្រាសាទ (Kh-MPS Temple)', 
+    fontFamily: "'Kh-MPS-Temple', 'Kantumruy Pro', sans-serif",
+    fontWeight: 'normal',
+    sample: 'កម្ពុជា សួស្តី',
+    description: 'ក្បាច់ប្រាសាទបុរាណ ស្រស់ស្អាតលេចធ្លោ'
+  },
+  { 
+    id: 'suwannaphum', 
+    name: 'សុវណ្ណភូមិ (Suwannaphum - ដិត 700)', 
+    fontFamily: "'Suwannaphum', serif",
+    fontWeight: 700,
+    sample: 'ដោយយល់ឃើញថា',
+    description: 'អក្សរខ្មែររចនាបថទន់ភ្លន់ លេចធ្លោ'
+  },
+  { 
+    id: 'content', 
+    name: 'ខន់ថិន (Content - ដិត 700)', 
+    fontFamily: "'Content', cursive",
+    fontWeight: 700,
+    sample: 'ដោយយល់ឃើញថា',
+    description: 'អក្សររាងមូលក្បាច់បែបបុរាណ'
+  },
+  { 
+    id: 'kdamthmor', 
+    name: 'ក្ដាមថ្ម ប្រូ (Kdam Thmor Pro - ដិត 700)', 
+    fontFamily: "'Kdam Thmor Pro', sans-serif",
+    fontWeight: 700,
+    sample: 'កម្ពុជា សួស្តី',
+    description: 'អក្សរជ្រុងបែបទំនើប ទាក់ទាញ'
+  },
+  { 
+    id: 'notoserif', 
+    name: 'ណូតូ សេរីហ្វ (Noto Serif Khmer - ដិត 700)', 
+    fontFamily: "'Noto Serif Khmer', serif",
+    fontWeight: 700,
+    sample: 'ដោយយល់ឃើញថា',
+    description: 'អក្សរផ្លូវការ ស្រឡះ ក្បាលច្បាស់'
+  },
+  { 
+    id: 'nokora', 
+    name: 'នគរា (Nokora - ដិត 700)', 
+    fontFamily: "'Nokora', sans-serif",
+    fontWeight: 700,
+    sample: 'ដោយយល់ឃើញថា',
+    description: 'អក្សររាងមូលក្បាលមូល ស្ដង់ដារ'
+  },
+  { 
+    id: 'kantumruy', 
+    name: 'កន្ទុំរុយ ប្រូ (Kantumruy Pro - ដិត 700)', 
+    fontFamily: "'Kantumruy Pro', sans-serif",
+    fontWeight: 700,
+    sample: 'កម្ពុជា សួស្តី',
+    description: 'អក្សរទំនើប ស្រឡះភ្នែក អានងាយស្រួល'
+  },
+  { 
+    id: 'moul', 
+    name: 'អក្សរមូល (Moul)', 
+    fontFamily: "'Moul', cursive",
+    fontWeight: 'normal',
+    sample: 'កម្ពុជា សួស្តី',
+    description: 'អក្សរមូលខ្មែរ ក្បាច់ក្បាលមូលបុរាណ'
+  },
+  { 
+    id: 'siemreap', 
+    name: 'សៀមរាប (Siemreap)', 
+    fontFamily: "'Siemreap', sans-serif",
+    fontWeight: 'normal',
+    sample: 'កម្ពុជា សួស្តី',
+    description: 'អក្សររាងមូលស្លូត ទន់ភ្លន់'
+  },
+  { 
+    id: 'koulen', 
+    name: 'គូលែន (Koulen)', 
+    fontFamily: "'Koulen', cursive",
+    fontWeight: 'normal',
+    sample: 'កម្ពុជា សួស្តី',
+    description: 'អក្សរដិតរឹងមាំ ស័ក្តិសមធ្វើចំណងជើង'
+  },
+  { 
+    id: 'bayon', 
+    name: 'បាយ័ន (Bayon)', 
+    fontFamily: "'Bayon', cursive",
+    fontWeight: 'normal',
+    sample: 'កម្ពុជា សួស្តី',
+    description: 'អក្សររចនាបថបាយ័ន ប្លែកភ្នែក'
+  },
+  { 
+    id: 'preahvihear', 
+    name: 'ព្រះវិហារ (Preahvihear)', 
+    fontFamily: "'Preahvihear', cursive",
+    fontWeight: 'normal',
+    sample: 'កម្ពុជា សួស្តី',
+    description: 'អក្សររាងមូលក្រាស់ បុរាណ'
+  },
+  { 
+    id: 'dangrek', 
+    name: 'ដងរែក (Dangrek)', 
+    fontFamily: "'Dangrek', cursive",
+    fontWeight: 'normal',
+    sample: 'កម្ពុជា សួស្តី',
+    description: 'អក្សរក្បាច់ដងរែក ស្រស់ស្អាត'
+  },
+  { 
+    id: 'bokor', 
+    name: 'បូកគោ (Bokor)', 
+    fontFamily: "'Bokor', cursive",
+    fontWeight: 'normal',
+    sample: 'កម្ពុជា សួស្តី',
+    description: 'អក្សរក្បាច់បូកគោ បែបសិល្បៈ'
+  },
+  { 
+    id: 'chenla', 
+    name: 'ចេនឡា (Chenla)', 
+    fontFamily: "'Chenla', cursive",
+    fontWeight: 'normal',
+    sample: 'កម្ពុជា សួស្តី',
+    description: 'អក្សរបុរាណចេនឡា'
+  },
+  { 
+    id: 'fasthand', 
+    name: 'រហ័ស (Fasthand)', 
+    fontFamily: "'Fasthand', cursive",
+    fontWeight: 'normal',
+    sample: 'កម្ពុជា សួស្តី',
+    description: 'អក្សរដៃរស់រវើក ស្អាតប្លែក'
+  }
+];
 
 const DEFAULT_KHMER_FRAME: SavedCustomFrame = {
   id: 'frame_khmer_gold_default',
@@ -236,6 +393,16 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
 
   const [showFrameModal, setShowFrameModal] = useState<boolean>(false);
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
+  const [showFontModal, setShowFontModal] = useState<boolean>(false);
+
+  // Font state for flashcards
+  const [selectedFontId, setSelectedFontId] = useState<string>(() => {
+    try {
+      return localStorage.getItem('khmer_flashcard_font_id') || 'battambang';
+    } catch (e) {
+      return 'battambang';
+    }
+  });
 
   // New frame upload inputs state
   const [newFrameName, setNewFrameName] = useState<string>('');
@@ -271,6 +438,14 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
       localStorage.setItem('khmer_flashcard_frame_mode', frameSelectionMode);
     } catch (e) {}
   }, [frameSelectionMode]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('khmer_flashcard_font_id', selectedFontId);
+    } catch (e) {}
+  }, [selectedFontId]);
+
+  const currentFont = KHMER_FONTS.find(f => f.id === selectedFontId) || KHMER_FONTS[0];
 
   const getFrameById = (id: string): SavedCustomFrame | undefined => {
     if (id === 'none') return undefined;
@@ -441,7 +616,7 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
         <meta charset="UTF-8">
         <title>សន្លឹកបណ្ណពាក្យ</title>
         <style>
-          @import url('https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&family=Siemreap&family=Battambang:wght@400;700&display=swap');
+          @import url('https://fonts.googleapis.com/css2?family=Battambang:wght@400;700;900&family=Bayon&family=Bokor&family=Chenla&family=Content:wght@400;700&family=Dangrek&family=Fasthand&family=Hanuman:wght@400;700;900&family=Kantumruy+Pro:wght@400;500;600;700&family=Kdam+Thmor+Pro:wght@400;700&family=Koulen&family=Moul&family=Nokora:wght@400;700;900&family=Noto+Sans+Khmer:wght@400;700;900&family=Noto+Serif+Khmer:wght@400;700;900&family=Preahvihear&family=Siemreap&family=Suwannaphum:wght@400;700;900&display=swap');
           @font-face {
             font-family: 'Kh-MPS-Temple';
             src: ${fontBase64 ? `url('data:font/ttf;charset=utf-8;base64,${fontBase64}') format('truetype')` : `url('${window.location.origin}/fonts/Kh-MPS%20Temple.ttf') format('truetype')`};
@@ -451,7 +626,9 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
           
           :root {
             --body-font-family: 'Kantumruy Pro', sans-serif;
-            --card-font-family: 'Kh-MPS-Temple', 'Kantumruy Pro', sans-serif;
+            --card-font-family: ${currentFont.fontFamily};
+            --card-font-weight: ${currentFont.fontWeight || 700};
+            --card-font-size: 70pt;
             --card-border-style: solid;
             --title-top-offset: 25px;
             --is-bw: 0;
@@ -482,81 +659,290 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
           }
           
           .no-print {
-            background: white;
-            padding: 12px 24px;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            background: #ffffff;
+            padding: 10px 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
             display: flex;
             align-items: center;
             justify-content: space-between;
             position: sticky;
             top: 0;
             z-index: 100;
+            border-bottom: 1px solid #e2e8f0;
+            flex-wrap: wrap;
+            gap: 12px;
           }
           
           .no-print-left {
-            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+          }
+
+          .sheet-title {
+            font-size: 15px;
             font-weight: 700;
-            color: #1e293b;
+            color: #0f172a;
+          }
+
+          .sheet-badge {
+            font-size: 11px;
+            background: #e0f2fe;
+            color: #0369a1;
+            padding: 3px 10px;
+            border-radius: 9999px;
+            font-weight: 700;
+            border: 1px solid #bae6fd;
           }
           
           .no-print-right {
             display: flex;
             align-items: center;
-            gap: 12px;
-          }
-          
-          .control-group {
-            display: flex;
-            align-items: center;
             gap: 8px;
-            font-size: 14px;
-          }
-          
-          select.font-select {
-            padding: 6px 12px;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            font-family: inherit;
-            outline: none;
+            flex-wrap: wrap;
           }
           
           .btn {
-            padding: 8px 16px;
-            border-radius: 6px;
+            padding: 8px 14px;
+            border-radius: 10px;
             border: 1px solid #cbd5e1;
-            background: white;
+            background: #ffffff;
             cursor: pointer;
             font-family: inherit;
-            font-size: 14px;
-            display: flex;
+            font-size: 13px;
+            display: inline-flex;
             align-items: center;
             gap: 6px;
-            font-weight: 500;
-            transition: all 0.2s;
+            font-weight: 600;
+            transition: all 0.15s ease;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+            user-select: none;
           }
           
           .btn:hover {
             background: #f8fafc;
+            border-color: #94a3b8;
           }
           
-          .btn.active-color {
+          .btn.btn-settings {
             background: #f0fdf4;
-            border-color: #bbf7d0;
+            border-color: #86efac;
             color: #166534;
+            font-weight: 700;
+          }
+
+          .btn.btn-settings:hover {
+            background: #dcfce7;
+            border-color: #4ade80;
+          }
+
+          .btn.active-color {
+            background: #eff6ff;
+            border-color: #93c5fd;
+            color: #1d4ed8;
           }
           
           .btn.print-btn {
-            background-color: #0ea5e9;
-            color: white;
-            border: none;
-            font-weight: 600;
+            background-color: #0284c7;
+            color: #ffffff;
+            border: 1px solid #0284c7;
+            font-weight: 700;
+            box-shadow: 0 2px 4px rgba(2, 132, 199, 0.25);
           }
           
           .btn.print-btn:hover {
-            background-color: #0284c7;
+            background-color: #0369a1;
           }
-          
+
+          /* Settings Modal Styles */
+          .modal-backdrop {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            animation: modalFadeIn 0.15s ease-out;
+          }
+
+          @keyframes modalFadeIn {
+            from { opacity: 0; transform: scale(0.98); }
+            to { opacity: 1; transform: scale(1); }
+          }
+
+          .modal-dialog {
+            background: #ffffff;
+            border-radius: 20px;
+            max-width: 580px;
+            width: 100%;
+            max-height: 88vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+            font-family: inherit;
+          }
+
+          .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid #f1f5f9;
+            background: #f8fafc;
+          }
+
+          .modal-header-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            background: #e0f2fe;
+            color: #0284c7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+          }
+
+          .modal-title {
+            margin: 0;
+            font-size: 15px;
+            font-weight: 700;
+            color: #0f172a;
+          }
+
+          .modal-subtitle {
+            margin: 2px 0 0 0;
+            font-size: 11px;
+            color: #64748b;
+          }
+
+          .modal-close-btn {
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            font-size: 14px;
+            font-weight: 700;
+            color: #64748b;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+          }
+
+          .modal-close-btn:hover {
+            background: #fee2e2;
+            border-color: #fca5a5;
+            color: #b91c1c;
+          }
+
+          .modal-body {
+            padding: 16px 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+          }
+
+          .setting-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+          }
+
+          .setting-card-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 8px;
+          }
+
+          .setting-field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+          }
+
+          .setting-field-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #334155;
+          }
+
+          .setting-val-badge {
+            font-size: 11px;
+            font-weight: 700;
+            color: #0284c7;
+            background: #e0f2fe;
+            padding: 2px 8px;
+            border-radius: 6px;
+          }
+
+          .form-control {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 13px;
+            background: #ffffff;
+            color: #1e293b;
+            outline: none;
+            box-sizing: border-box;
+            transition: border-color 0.2s, box-shadow 0.2s;
+          }
+
+          .form-control:focus {
+            border-color: #0284c7;
+            box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+          }
+
+          .range-slider {
+            width: 100%;
+            cursor: pointer;
+            accent-color: #0284c7;
+            height: 6px;
+            border-radius: 3px;
+          }
+
+          .modal-footer {
+            padding: 12px 20px;
+            border-top: 1px solid #f1f5f9;
+            background: #f8fafc;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+
+          .btn-primary {
+            background: #0284c7;
+            color: #ffffff;
+            border: 1px solid #0284c7;
+            font-weight: 700;
+          }
+
+          .btn-primary:hover {
+            background: #0369a1;
+          }
+
           @media print {
+            .modal-backdrop { display: none !important; }
             @page {
               size: A4 portrait;
               margin-top: 10mm;
@@ -796,8 +1182,8 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
           
           .card-word {
             font-family: var(--card-font-family);
-            font-size: var(--card-font-size, 64pt);
-            font-weight: normal;
+            font-size: var(--card-font-size, 70pt);
+            font-weight: var(--card-font-weight, 700);
             color: var(--card-color);
             margin: 0;
             text-shadow: 2px 2px 0px rgba(0,0,0,0.1);
@@ -845,55 +1231,133 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
         </style>
       </head>
       <body>
+        <!-- Top Action Bar -->
         <div class="no-print">
           <div class="no-print-left">
-            សន្លឹកបណ្ណពាក្យ៖ ពាក្យពិបាក និងពាក្យជួយ
+            <span class="sheet-title">សន្លឹកបណ្ណពាក្យ៖ ពាក្យពិបាក និងពាក្យជួយ</span>
+            <span class="sheet-badge">${totalCards} បណ្ណ (${pages} ទំព័រ A4)</span>
           </div>
           <div class="no-print-right">
-            <div class="control-group">
-              <label>ប្ដូរស៊ុមបណ្ណពាក្យ៖</label>
-              <select id="borderSelect" class="font-select">
-                <option value="none" ${frameSelectionMode === 'single' && activeFrameId === 'none' ? 'selected' : ''}>⏹️ គ្មានស៊ុមរូបភាព (No Frame Image)</option>
-                ${savedFrames.map(f => `<option value="${f.id}" ${frameSelectionMode === 'single' && activeFrameId === f.id ? 'selected' : ''}>🖼️ ${f.name}</option>`).join('')}
-                <option value="slots" ${frameSelectionMode === 'slots' ? 'selected' : ''}>🎨 កំណត់តាមបណ្ណ 1, 2, 3 (Set per Card)</option>
-              </select>
+            <button class="btn btn-settings" id="openSettingsBtn" title="បើកផ្ទាំងការកំណត់រូបរាងបណ្ណ">
+              <span style="font-size: 15px;">⚙️</span>
+              <span>ការកំណត់ (Settings)</span>
+            </button>
+            <button class="btn active-color" id="colorBtn" title="របៀបពណ៌ធម្មជាតិ">🎨 ពណ៌ធម្មជាតិ</button>
+            <button class="btn" id="bwBtn" title="របៀបស-ខ្មៅ សម្រាប់សន្សំថ្នាំ">⚫ ស-ខ្មៅ</button>
+            <button class="btn" id="resetBtn" title="កំណត់ជម្រើសទាំងអស់ឡើងវិញ">🔄 កំណត់ឡើងវិញ</button>
+            <button class="btn print-btn" onclick="window.print()">🖨️ ទាញយកសន្លឹកកិច្ចការ</button>
+          </div>
+        </div>
+
+        <!-- Unified Settings Modal -->
+        <div id="settingsModalBackdrop" class="modal-backdrop" style="display: none;">
+          <div class="modal-dialog">
+            <!-- Modal Header -->
+            <div class="modal-header">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <div class="modal-header-icon">⚙️</div>
+                <div>
+                  <h3 class="modal-title">ការកំណត់រួមសម្រាប់សន្លឹកបណ្ណពាក្យ</h3>
+                  <p class="modal-subtitle">Card Settings & Customization</p>
+                </div>
+              </div>
+              <button class="modal-close-btn" id="closeSettingsBtn" title="បិទ (Close)">✕</button>
             </div>
-            <div class="control-group">
-              <label>ផ្ទៃសចំណងជើង៖</label>
-              <select id="titleBgSelect" class="font-select">
-                <option value="default">⚙️ តាមស៊ុមនីមួយៗ</option>
-                <option value="hide">🚫 លុបផ្ទៃស (ថ្លា) គ្រប់បណ្ណ</option>
-                <option value="show">⬜ បង្ហាញផ្ទៃស គ្រប់បណ្ណ</option>
-              </select>
+
+            <!-- Modal Body with 3 Grouped Sections -->
+            <div class="modal-body">
+              <!-- Section 1: Frames & Layout -->
+              <div class="setting-card">
+                <div class="setting-card-title">
+                  <span>🖼️</span> ស៊ុម និងទីតាំងចំណងជើង (Frame & Layout)
+                </div>
+                
+                <div class="setting-field">
+                  <label class="setting-field-label">ប្ដូរស៊ុមបណ្ណពាក្យ (Select Frame)៖</label>
+                  <select id="borderSelect" class="form-control">
+                    <option value="none" ${frameSelectionMode === 'single' && activeFrameId === 'none' ? 'selected' : ''}>⏹️ គ្មានស៊ុមរូបភាព (No Frame Image)</option>
+                    ${savedFrames.map(f => `<option value="${f.id}" ${frameSelectionMode === 'single' && activeFrameId === f.id ? 'selected' : ''}>🖼️ ${f.name}</option>`).join('')}
+                    <option value="slots" ${frameSelectionMode === 'slots' ? 'selected' : ''}>🎨 កំណត់តាមបណ្ណ 1, 2, 3 (Set per Card)</option>
+                  </select>
+                </div>
+
+                <div class="setting-field">
+                  <label class="setting-field-label">ផ្ទៃសចំណងជើង (Title Background)៖</label>
+                  <select id="titleBgSelect" class="form-control">
+                    <option value="default">⚙️ តាមស៊ុមនីមួយៗ (Default per Frame)</option>
+                    <option value="hide">🚫 លុបផ្ទៃស (ថ្លា) គ្រប់បណ្ណ</option>
+                    <option value="show">⬜ បង្ហាញផ្ទៃស គ្រប់បណ្ណ</option>
+                  </select>
+                </div>
+
+                <div class="setting-field">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                    <label class="setting-field-label">រំកិលចំណងជើងចុះក្រោម (Vertical Offset)៖</label>
+                    <span id="titleTopVal" class="setting-val-badge">25px</span>
+                  </div>
+                  <input type="range" id="titleTopSlider" min="14" max="65" value="25" class="range-slider" />
+                </div>
+              </div>
+
+              <!-- Section 2: Typography & Size -->
+              <div class="setting-card">
+                <div class="setting-card-title">
+                  <span>✍️</span> ពុម្ពអក្សរ និងទំហំ (Font & Typography)
+                </div>
+
+                <div class="setting-field">
+                  <label class="setting-field-label">ពុម្ពអក្សរខ្មែរ (Khmer Font)៖</label>
+                  <select id="fontFamilySelect" class="form-control">
+                    ${KHMER_FONTS.map(f => `<option value="${f.fontFamily}" data-weight="${f.fontWeight || 700}" ${f.id === selectedFontId ? 'selected' : ''}>${f.name}</option>`).join('')}
+                  </select>
+                </div>
+
+                <div class="setting-field">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                    <label class="setting-field-label">ទំហំពាក្យ (Word Font Size)៖</label>
+                    <span id="fontSizeVal" class="setting-val-badge">70pt</span>
+                  </div>
+                  <input type="range" id="fontSizeSlider" min="30" max="100" value="70" class="range-slider" />
+                </div>
+              </div>
+
+              <!-- Section 3: Color Options -->
+              <div class="setting-card">
+                <div class="setting-card-title">
+                  <span>🎨</span> ពណ៌ពាក្យ (Word Color Options)
+                </div>
+
+                <div class="setting-field">
+                  <label class="setting-field-label">របៀបពណ៌ពាក្យ៖</label>
+                  <select id="colorModeSelect" class="form-control">
+                    <option value="multi">🎨 ពណ៌ចម្រុះតាមបណ្ណ (Multi-color per card)</option>
+                    <option value="uniform">📌 ពណ៌ដូចគ្នាគ្រប់បណ្ណ (Uniform single color)</option>
+                  </select>
+                </div>
+
+                <div id="uniformColorContainer" class="setting-field" style="display: none;">
+                  <label class="setting-field-label">ជ្រើសរើសពណ៌ដូចគ្នា៖</label>
+                  <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 4px;">
+                    <button class="color-dot" data-color="#3B82F6" style="background: #3B82F6; width: 26px; height: 26px; border-radius: 50%; border: 2px solid white; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.25); outline: none;"></button>
+                    <button class="color-dot" data-color="#F97316" style="background: #F97316; width: 26px; height: 26px; border-radius: 50%; border: 2px solid white; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.25); outline: none;"></button>
+                    <button class="color-dot" data-color="#16A34A" style="background: #16A34A; width: 26px; height: 26px; border-radius: 50%; border: 2px solid white; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.25); outline: none;"></button>
+                    <button class="color-dot" data-color="#A855F7" style="background: #A855F7; width: 26px; height: 26px; border-radius: 50%; border: 2px solid white; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.25); outline: none;"></button>
+                    <button class="color-dot" data-color="#E11D48" style="background: #E11D48; width: 26px; height: 26px; border-radius: 50%; border: 2px solid white; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.25); outline: none;"></button>
+                    <button class="color-dot" data-color="#0D9488" style="background: #0D9488; width: 26px; height: 26px; border-radius: 50%; border: 2px solid white; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.25); outline: none;"></button>
+                    <div style="display: flex; align-items: center; gap: 6px; margin-left: 6px;">
+                      <input type="color" id="customColorPicker" value="#3B82F6" style="width: 28px; height: 28px; border: none; cursor: pointer; border-radius: 50%; background: none;" title="ជ្រើសរើសពណ៌ផ្ទាល់ខ្លួន" />
+                      <span style="font-size: 11px; color: #64748b;">ពណ៌ផ្ទាល់ខ្លួន</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="control-group">
-              <label>រំកិលចំណងជើងចុះក្រោម៖ <span id="titleTopVal">25px</span></label>
-              <input type="range" id="titleTopSlider" min="14" max="65" value="25" style="width: 75px; cursor: pointer; accent-color: #2563eb;" title="រំកិលចំណងជើងចុះក្រោម ឬឡើងលើ" />
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+              <button class="btn" id="modalResetBtn">🔄 កំណត់ឡើងវិញ (Reset Defaults)</button>
+              <button class="btn btn-primary" id="modalDoneBtn">✓ រួចរាល់ (Done)</button>
             </div>
-            <div class="control-group">
-              <label>ពណ៌ពាក្យ៖</label>
-              <select id="colorModeSelect" class="font-select">
-                <option value="multi">🎨 ពណ៌ចម្រុះតាមបណ្ណ</option>
-                <option value="uniform">📌 ពណ៌ដូចគ្នាគ្រប់បណ្ណ</option>
-              </select>
-            </div>
-            <div id="uniformColorContainer" class="control-group" style="display: none; align-items: center; gap: 4px;">
-              <button class="color-dot" data-color="#3B82F6" style="background: #3B82F6; width: 22px; height: 22px; border-radius: 50%; border: 2px solid white; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);"></button>
-              <button class="color-dot" data-color="#F97316" style="background: #F97316; width: 22px; height: 22px; border-radius: 50%; border: 2px solid white; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);"></button>
-              <button class="color-dot" data-color="#16A34A" style="background: #16A34A; width: 22px; height: 22px; border-radius: 50%; border: 2px solid white; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);"></button>
-              <button class="color-dot" data-color="#A855F7" style="background: #A855F7; width: 22px; height: 22px; border-radius: 50%; border: 2px solid white; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);"></button>
-              <button class="color-dot" data-color="#E11D48" style="background: #E11D48; width: 22px; height: 22px; border-radius: 50%; border: 2px solid white; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);"></button>
-              <button class="color-dot" data-color="#0D9488" style="background: #0D9488; width: 22px; height: 22px; border-radius: 50%; border: 2px solid white; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);"></button>
-              <input type="color" id="customColorPicker" value="#3B82F6" style="width: 26px; height: 26px; border: none; cursor: pointer; border-radius: 50%; background: none;" title="ជ្រើសរើសពណ៌ផ្ទាល់ខ្លួន" />
-            </div>
-            <div class="control-group">
-              <label>ទំហំពាក្យ៖ <span id="fontSizeVal">64pt</span></label>
-              <input type="range" id="fontSizeSlider" min="30" max="100" value="64" style="width: 80px; cursor: pointer; accent-color: #2563eb;" />
-            </div>
-            <button class="btn" id="resetBtn">🔄 កំណត់ឡើងវិញ</button>
-            <button class="btn active-color" id="colorBtn">🎨 ពណ៌ធម្មជាតិ</button>
-            <button class="btn" id="bwBtn">⚫ ស-ខ្មៅ (សន្សំថ្នាំ)</button>
-            <button class="btn print-btn" onclick="window.print()">🖨 ទាញយកសន្លឹកកិច្ចការ</button>
           </div>
         </div>
     `;
@@ -971,6 +1435,42 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
           )};
           window.slotFrameIds = ${JSON.stringify(slotFrameIds)};
 
+          const openSettingsBtn = document.getElementById('openSettingsBtn');
+          const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+          const modalDoneBtn = document.getElementById('modalDoneBtn');
+          const modalResetBtn = document.getElementById('modalResetBtn');
+          const settingsModalBackdrop = document.getElementById('settingsModalBackdrop');
+
+          function openSettingsModal() {
+            if (settingsModalBackdrop) {
+              settingsModalBackdrop.style.display = 'flex';
+            }
+          }
+
+          function closeSettingsModal() {
+            if (settingsModalBackdrop) {
+              settingsModalBackdrop.style.display = 'none';
+            }
+          }
+
+          if (openSettingsBtn) openSettingsBtn.addEventListener('click', openSettingsModal);
+          if (closeSettingsBtn) closeSettingsBtn.addEventListener('click', closeSettingsModal);
+          if (modalDoneBtn) modalDoneBtn.addEventListener('click', closeSettingsModal);
+
+          if (settingsModalBackdrop) {
+            settingsModalBackdrop.addEventListener('click', (e) => {
+              if (e.target === settingsModalBackdrop) {
+                closeSettingsModal();
+              }
+            });
+          }
+
+          document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+              closeSettingsModal();
+            }
+          });
+
           const borderSelect = document.getElementById('borderSelect');
           const titleBgSelect = document.getElementById('titleBgSelect');
           const colorModeSelect = document.getElementById('colorModeSelect');
@@ -982,6 +1482,42 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
           const resetBtn = document.getElementById('resetBtn');
           const colorBtn = document.getElementById('colorBtn');
           const bwBtn = document.getElementById('bwBtn');
+
+          function handleFullReset() {
+            borderSelect.value = "none";
+            if (titleBgSelect) titleBgSelect.value = "default";
+            if (titleTopSlider && titleTopVal) {
+              titleTopSlider.value = "25";
+              titleTopVal.textContent = "25px";
+              document.documentElement.style.setProperty('--title-top-offset', '25px');
+            }
+            colorModeSelect.value = "multi";
+            uniformColorContainer.style.display = 'none';
+            fontSizeSlider.value = "70";
+            fontSizeVal.textContent = "70pt";
+            document.documentElement.style.setProperty('--card-font-size', '70pt');
+            document.documentElement.style.setProperty('--card-border-style', "solid");
+            if (fontFamilySelect) {
+              fontFamilySelect.value = "${currentFont.fontFamily}";
+            }
+            document.documentElement.style.setProperty('--card-font-family', "${currentFont.fontFamily}");
+            document.documentElement.style.setProperty('--card-font-weight', "${currentFont.fontWeight || 700}");
+            document.documentElement.style.setProperty('--is-bw', '0');
+            document.documentElement.classList.remove('bw-mode');
+            colorBtn.classList.add('active-color');
+            bwBtn.classList.remove('active-color');
+            document.querySelectorAll('.card').forEach(c => {
+              c.classList.remove('has-frame');
+              c.removeAttribute('data-hide-title-bg');
+              c.setAttribute('data-title-pos', 'top-left');
+              const orig = c.getAttribute('data-original-color');
+              if (orig) c.style.setProperty('--card-color', orig);
+            });
+            document.querySelectorAll('.card .custom-frame-overlay').forEach(el => el.remove());
+          }
+
+          resetBtn.addEventListener('click', handleFullReset);
+          if (modalResetBtn) modalResetBtn.addEventListener('click', handleFullReset);
 
           let currentUniformColor = '#3B82F6';
 
@@ -1024,6 +1560,17 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
               }
             });
           });
+
+          const fontFamilySelect = document.getElementById('fontFamilySelect');
+          if (fontFamilySelect) {
+            fontFamilySelect.addEventListener('change', (e) => {
+              const selectedOpt = e.target.options[e.target.selectedIndex];
+              document.documentElement.style.setProperty('--card-font-family', e.target.value);
+              if (selectedOpt && selectedOpt.dataset && selectedOpt.dataset.weight) {
+                document.documentElement.style.setProperty('--card-font-weight', selectedOpt.dataset.weight);
+              }
+            });
+          }
 
           if (titleBgSelect) {
             titleBgSelect.addEventListener('change', (e) => {
@@ -1100,35 +1647,6 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
                 card.style.setProperty('--card-color', currentUniformColor);
               });
             }
-          });
-          
-          resetBtn.addEventListener('click', () => {
-            borderSelect.value = "none";
-            if (titleBgSelect) titleBgSelect.value = "default";
-            if (titleTopSlider && titleTopVal) {
-              titleTopSlider.value = "25";
-              titleTopVal.textContent = "25px";
-              document.documentElement.style.setProperty('--title-top-offset', '25px');
-            }
-            colorModeSelect.value = "multi";
-            uniformColorContainer.style.display = 'none';
-            fontSizeSlider.value = "64";
-            fontSizeVal.textContent = "64pt";
-            document.documentElement.style.setProperty('--card-font-size', '64pt');
-            document.documentElement.style.setProperty('--card-border-style', "solid");
-            document.documentElement.style.setProperty('--card-font-family', "'Kh-MPS-Temple', 'Kantumruy Pro', sans-serif");
-            document.documentElement.style.setProperty('--is-bw', '0');
-            document.documentElement.classList.remove('bw-mode');
-            colorBtn.classList.add('active-color');
-            bwBtn.classList.remove('active-color');
-            document.querySelectorAll('.card').forEach(c => {
-              c.classList.remove('has-frame');
-              c.removeAttribute('data-hide-title-bg');
-              c.setAttribute('data-title-pos', 'top-left');
-              const orig = c.getAttribute('data-original-color');
-              if (orig) c.style.setProperty('--card-color', orig);
-            });
-            document.querySelectorAll('.card .custom-frame-overlay').forEach(el => el.remove());
           });
           
           colorBtn.addEventListener('click', () => {
@@ -1303,6 +1821,14 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
           
           <div className="flex flex-wrap items-center gap-3">
              <button
+               onClick={() => { playClickSound(); setShowFontModal(true); }}
+               className="px-3.5 py-2.5 bg-white border border-border-beige text-charcoal hover:bg-stone-bg rounded-full shadow-sm transition-all cursor-pointer flex items-center justify-center gap-2"
+               title="ប្ដូរពុម្ពអក្សរបណ្ណពាក្យ (Change Font)"
+             >
+               <Type size={20} className="text-blue-600" />
+               <span className="text-xs font-bold hidden md:inline">ពុម្ពអក្សរ</span>
+             </button>
+             <button
                onClick={() => { playClickSound(); setShowFrameModal(true); }}
                className="px-3.5 py-2.5 bg-white border border-border-beige text-charcoal hover:bg-stone-bg rounded-full shadow-sm transition-all cursor-pointer flex items-center justify-center gap-2"
                title="ជ្រើសរើសរូបភាពស៊ុម / ម៉ូដស៊ុម"
@@ -1330,19 +1856,33 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
                       <h3 className="font-bold text-sm text-charcoal">ការកំណត់ (Settings)</h3>
                       <button onClick={() => setShowSettings(false)} className="text-soft-gray hover:text-clay cursor-pointer"><XCircle size={18} /></button>
                     </div>
-                    <div className="space-y-3">
-                      <label className="text-xs font-bold text-soft-gray block">ល្បឿនប្ដូរកាត (Speed)</label>
-                      <div className="flex gap-2">
-                        {[3000, 5000, 10000].map(time => (
-                          <button
-                            key={time}
-                            onClick={() => { playClickSound(); setAutoPlayInterval(time); }}
-                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all cursor-pointer ${autoPlayInterval === time ? 'bg-sage text-white border-sage' : 'bg-white text-soft-gray border-border-beige hover:bg-stone-bg'}`}
-                          >
-                            {time / 1000}s
-                          </button>
-                        ))}
-                  
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-xs font-bold text-soft-gray block mb-1.5">ពុម្ពអក្សរ (Font Style)</label>
+                        <select
+                          value={selectedFontId}
+                          onChange={(e) => { playClickSound(); setSelectedFontId(e.target.value); }}
+                          className="w-full px-2.5 py-2 border border-border-beige bg-white rounded-lg text-xs font-bold text-charcoal cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        >
+                          {KHMER_FONTS.map(f => (
+                            <option key={f.id} value={f.id}>{f.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="pt-2 border-t border-border-beige">
+                        <label className="text-xs font-bold text-soft-gray block mb-1.5">ល្បឿនប្ដូរកាត (Speed)</label>
+                        <div className="flex gap-2">
+                          {[3000, 5000, 10000].map(time => (
+                            <button
+                              key={time}
+                              onClick={() => { playClickSound(); setAutoPlayInterval(time); }}
+                              className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all cursor-pointer ${autoPlayInterval === time ? 'bg-sage text-white border-sage' : 'bg-white text-soft-gray border-border-beige hover:bg-stone-bg'}`}
+                            >
+                              {time / 1000}s
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1420,19 +1960,42 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
                   <h2 className="text-4xl md:text-5xl font-normal text-charcoal mb-4 tracking-tight">ប័ណ្ណពាក្យ (Flashcards)</h2>
                   <p className="text-xl text-soft-gray mb-6 font-semibold">រៀនពាក្យតាមរយៈប័ណ្ណពាក្យ (Flip cards) ចំនួន {activeWords.length} ពាក្យ</p>
                   
-                  {/* Category Filter selector in start screen */}
-                  <div className="flex flex-col sm:flex-row items-center gap-3 mb-10 bg-[#F9F7F2] border border-border-beige px-5 py-3 rounded-2xl w-full max-w-sm">
-                    <span className="text-sm font-bold text-soft-gray shrink-0">ប្រភេទពាក្យ៖</span>
-                    <select
-                      value={filterType}
-                      onChange={(e) => { playClickSound(); setFilterType(e.target.value); }}
-                      className="w-full px-3 py-1.5 border border-border-beige bg-white rounded-xl text-sm font-bold focus:outline-none focus:ring-1 focus:ring-clay focus:border-clay text-charcoal cursor-pointer"
-                    >
-                      {uniqueWordTypes.map(t => (
-                        <option key={t} value={t}>{t}</option>
-            ))}
-                
-                    </select>
+                  {/* Category Filter and Font selector in start screen */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8 w-full max-w-lg">
+                    <div className="flex flex-col gap-1.5 bg-[#F9F7F2] border border-border-beige px-4 py-2.5 rounded-2xl text-left">
+                      <span className="text-xs font-bold text-soft-gray">ប្រភេទពាក្យ (Category)៖</span>
+                      <select
+                        value={filterType}
+                        onChange={(e) => { playClickSound(); setFilterType(e.target.value); }}
+                        className="w-full px-2.5 py-1.5 border border-border-beige bg-white rounded-xl text-xs font-bold focus:outline-none focus:ring-1 focus:ring-clay focus:border-clay text-charcoal cursor-pointer"
+                      >
+                        {uniqueWordTypes.map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 bg-[#F9F7F2] border border-border-beige px-4 py-2.5 rounded-2xl text-left">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-soft-gray">ពុម្ពអក្សរ (Font Style)៖</span>
+                        <button
+                          type="button"
+                          onClick={() => { playClickSound(); setShowFontModal(true); }}
+                          className="text-[11px] text-blue-600 hover:underline font-bold cursor-pointer"
+                        >
+                          ជ្រើសរើស
+                        </button>
+                      </div>
+                      <select
+                        value={selectedFontId}
+                        onChange={(e) => { playClickSound(); setSelectedFontId(e.target.value); }}
+                        className="w-full px-2.5 py-1.5 border border-border-beige bg-white rounded-xl text-xs font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-charcoal cursor-pointer"
+                      >
+                        {KHMER_FONTS.map(f => (
+                          <option key={f.id} value={f.id}>{f.name}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
 
                   <button
@@ -1515,12 +2078,25 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
                 {!isFlipped ? (
                   // FRONT OF CARD
                   <div className="flex flex-col items-center gap-6 relative z-30">
-                    <h2 className={`text-7xl md:text-[9rem] font-normal tracking-tight mt-2 md:mt-6 select-none ${vibrantColors[currentIndex % vibrantColors.length]} font-['Kh-MPS-Temple']`}>
+                    <h2 
+                      style={{ 
+                        fontFamily: currentFont.fontFamily,
+                        fontWeight: currentFont.fontWeight || 700 
+                      }}
+                      className={`text-7xl md:text-[9rem] tracking-tight mt-2 md:mt-6 select-none ${vibrantColors[currentIndex % vibrantColors.length]}`}
+                    >
                       {currentWord.word}
                     </h2>
                     <div className="flex flex-wrap items-center justify-center gap-3 mt-6 md:mt-10">
                       {currentWord.parts.map((p, pIdx) => (
-                        <span key={pIdx} className={`px-4 py-2 md:px-6 md:py-3 rounded-2xl text-xl md:text-3xl font-bold text-white shadow-sm ${vibrantBgColors[currentIndex % vibrantBgColors.length]}`}>
+                        <span 
+                          key={pIdx} 
+                          style={{ 
+                            fontFamily: currentFont.fontFamily,
+                            fontWeight: currentFont.fontWeight || 700 
+                          }}
+                          className={`px-4 py-2 md:px-6 md:py-3 rounded-2xl text-xl md:text-3xl text-white shadow-sm ${vibrantBgColors[currentIndex % vibrantBgColors.length]}`}
+                        >
                           {p}
                         </span>
                       ))}
@@ -1839,7 +2415,10 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
                         }`}>
                           ចំណងជើង
                         </span>
-                        <span className="text-xs font-bold text-charcoal font-['Kh-MPS-Temple'] relative z-20 mt-3">
+                        <span 
+                          style={{ fontFamily: currentFont.fontFamily }}
+                          className="text-xs font-bold text-charcoal relative z-20 mt-3"
+                        >
                           បណ្ណទី{idx + 1}
                         </span>
                       </div>
@@ -2011,7 +2590,10 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
                         ពាក្យ
                       </span>
 
-                      <span className="text-lg font-bold text-charcoal relative z-20 font-['Kh-MPS-Temple'] mt-3">
+                      <span 
+                        style={{ fontFamily: currentFont.fontFamily }}
+                        className="text-lg font-bold text-charcoal relative z-20 mt-3"
+                      >
                         {newFrameName || 'ស៊ុមថ្មី'}
                       </span>
                     </div>
@@ -2046,6 +2628,151 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
                 >
                   <Save size={16} />
                   <span>រក្សាទុកក្នុងបណ្ណាល័យ (Save Frame)</span>
+                </button>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* Font Selection Modal */}
+        {showFontModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-[9999]">
+            <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-2xl w-full shadow-2xl border border-border-beige flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              
+              {/* Header */}
+              <div className="flex justify-between items-center pb-4 border-b border-gray-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-xs">
+                    <Type size={22} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-lg text-charcoal">ជ្រើសរើសពុម្ពអក្សរបណ្ណពាក្យ</h3>
+                    <p className="text-xs text-soft-gray font-medium">ផ្លាស់ប្ដូរម៉ូដអក្សរសម្រាប់បណ្ណរៀន និងសន្លឹកកិច្ចការ (Font Style)</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => { playClickSound(); setShowFontModal(false); }}
+                  className="text-soft-gray hover:text-clay p-1 rounded-lg hover:bg-stone-50 transition-colors cursor-pointer"
+                >
+                  <XCircle size={22} />
+                </button>
+              </div>
+
+              {/* Live Preview of Current Selected Font */}
+              <div className="my-4 p-4 rounded-2xl bg-gradient-to-r from-blue-50/70 via-sky-50/50 to-indigo-50/70 border border-blue-100 flex flex-col items-center justify-center text-center">
+                <span className="text-[11px] font-bold text-blue-800 mb-1 tracking-wide uppercase">
+                  គំរូអក្សរជាក់ស្ដែង (Live Preview) — {currentFont.name}
+                </span>
+                <div 
+                  style={{ 
+                    fontFamily: currentFont.fontFamily,
+                    fontWeight: currentFont.fontWeight || 700 
+                  }} 
+                  className="text-4xl sm:text-5xl text-blue-600 py-2 select-none tracking-normal"
+                >
+                  {currentWord?.word || 'កម្ពុជា'}
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  {currentWord?.parts && currentWord.parts.length > 0 ? (
+                    currentWord.parts.map((p, i) => (
+                      <span 
+                        key={i} 
+                        style={{ 
+                          fontFamily: currentFont.fontFamily,
+                          fontWeight: currentFont.fontWeight || 700 
+                        }} 
+                        className="px-3 py-1 bg-white text-blue-700 text-sm font-bold rounded-lg shadow-2xs border border-blue-100"
+                      >
+                        {p}
+                      </span>
+                    ))
+                  ) : (
+                    <span 
+                      style={{ 
+                        fontFamily: currentFont.fontFamily,
+                        fontWeight: currentFont.fontWeight || 700 
+                      }} 
+                      className="text-xs text-blue-700/80"
+                    >
+                      {currentFont.sample}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Font Options Grid */}
+              <div className="overflow-y-auto flex-1 pr-1 space-y-2.5 max-h-[48vh]">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {KHMER_FONTS.map(font => {
+                    const isSelected = font.id === selectedFontId;
+                    return (
+                      <button
+                        key={font.id}
+                        onClick={() => {
+                          playClickSound();
+                          setSelectedFontId(font.id);
+                        }}
+                        className={`text-left p-3.5 rounded-2xl border-2 transition-all cursor-pointer relative flex flex-col justify-between group ${
+                          isSelected 
+                            ? 'border-blue-600 bg-blue-50/40 shadow-sm' 
+                            : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-stone-50/70'
+                        }`}
+                      >
+                        {/* Active check indicator */}
+                        {isSelected && (
+                          <div className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                            <Check size={12} strokeWidth={3} />
+                          </div>
+                        )}
+
+                        <div>
+                          <span className="text-xs font-bold text-charcoal block line-clamp-1 pr-6">
+                            {font.name}
+                          </span>
+                          <span className="text-[11px] text-soft-gray block mt-0.5 mb-2 line-clamp-1">
+                            {font.description}
+                          </span>
+                        </div>
+
+                        <div 
+                          style={{ 
+                            fontFamily: font.fontFamily,
+                            fontWeight: font.fontWeight || 700 
+                          }} 
+                          className={`text-2xl pt-1 select-none transition-transform group-hover:scale-105 ${
+                            isSelected ? 'text-blue-700 font-bold' : 'text-slate-800'
+                          }`}
+                        >
+                          {font.sample}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="mt-5 pt-3 border-t border-gray-100 flex items-center justify-between">
+                <button
+                  onClick={() => {
+                    playClickSound();
+                    setSelectedFontId('battambang');
+                  }}
+                  className="px-3.5 py-2 text-xs font-bold text-soft-gray hover:text-charcoal rounded-xl hover:bg-stone-100 transition-all cursor-pointer"
+                >
+                  កំណត់ឡើងវិញ (Reset to Battambang 700)
+                </button>
+
+                <button
+                  onClick={() => {
+                    playSuccessSound();
+                    setShowFontModal(false);
+                  }}
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+                >
+                  <Check size={16} />
+                  <span>ជ្រើសរើសរួចរាល់ (Apply)</span>
                 </button>
               </div>
 
