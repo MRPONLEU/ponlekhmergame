@@ -38,19 +38,78 @@ interface FlashcardsProps {
   onBack: () => void;
 }
 
+export type FrameTitlePosition = 
+  | 'top-left' | 'top-center' | 'top-right'
+  | 'middle-left' | 'middle-center' | 'middle-right'
+  | 'bottom-left' | 'bottom-center' | 'bottom-right'
+  | 'left' | 'center' | 'right';
+
 export interface SavedCustomFrame {
   id: string;
   name: string;
   url: string;
-  titlePosition?: 'left' | 'center' | 'right';
+  titlePosition?: FrameTitlePosition;
+  hideTitleBg?: boolean;
   createdAt: number;
 }
+
+export const FRAME_POSITIONS = [
+  { id: 'top-left', label: 'ឆ្វេងលើ', icon: '↖' },
+  { id: 'top-center', label: 'កណ្ដាលលើ', icon: '↑' },
+  { id: 'top-right', label: 'ស្ដាំលើ', icon: '↗' },
+  { id: 'middle-left', label: 'ឆ្វេងកណ្តាល', icon: '←' },
+  { id: 'middle-center', label: 'ចំកណ្តាល', icon: '•' },
+  { id: 'middle-right', label: 'ស្ដាំកណ្តាល', icon: '→' },
+  { id: 'bottom-left', label: 'ឆ្វេងក្រោម', icon: '↙' },
+  { id: 'bottom-center', label: 'កណ្ដាលក្រោម', icon: '↓' },
+  { id: 'bottom-right', label: 'ស្ដាំក្រោម', icon: '↘' },
+] as const;
+
+export const normalizeTitlePos = (pos?: string): FrameTitlePosition => {
+  if (!pos || pos === 'left') return 'top-left';
+  if (pos === 'center') return 'top-center';
+  if (pos === 'right') return 'top-right';
+  return pos as FrameTitlePosition;
+};
+
+export const getTitlePositionClasses = (pos?: string): string => {
+  const p = normalizeTitlePos(pos);
+  switch (p) {
+    case 'top-left': return 'top-2.5 left-2.5 text-left';
+    case 'top-center': return 'top-2.5 left-1/2 -translate-x-1/2 text-center';
+    case 'top-right': return 'top-2.5 right-2.5 text-right';
+    case 'middle-left': return 'top-1/2 left-2.5 -translate-y-1/2 text-left';
+    case 'middle-center': return 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center';
+    case 'middle-right': return 'top-1/2 right-2.5 -translate-y-1/2 text-right';
+    case 'bottom-left': return 'bottom-2.5 left-2.5 text-left';
+    case 'bottom-center': return 'bottom-2.5 left-1/2 -translate-x-1/2 text-center';
+    case 'bottom-right': return 'bottom-2.5 right-2.5 text-right';
+    default: return 'top-2.5 left-2.5 text-left';
+  }
+};
+
+export const getStudyCardTitlePositionClasses = (pos?: string): string => {
+  const p = normalizeTitlePos(pos);
+  switch (p) {
+    case 'top-left': return 'top-8 sm:top-9 left-6 text-left';
+    case 'top-center': return 'top-8 sm:top-9 left-1/2 -translate-x-1/2 text-center';
+    case 'top-right': return 'top-8 sm:top-9 right-16 text-right';
+    case 'middle-left': return 'top-1/2 left-6 -translate-y-1/2 text-left';
+    case 'middle-center': return 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center';
+    case 'middle-right': return 'top-1/2 right-6 -translate-y-1/2 text-right';
+    case 'bottom-left': return 'bottom-8 left-6 text-left';
+    case 'bottom-center': return 'bottom-8 left-1/2 -translate-x-1/2 text-center';
+    case 'bottom-right': return 'bottom-8 right-6 text-right';
+    default: return 'top-8 sm:top-9 left-6 text-left';
+  }
+};
 
 const DEFAULT_KHMER_FRAME: SavedCustomFrame = {
   id: 'frame_khmer_gold_default',
   name: 'ស៊ុមខ្មែរក្បាច់មាស (Khmer Gold Ornate)',
   url: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="380" viewBox="0 0 800 380" fill="none"><rect x="10" y="10" width="780" height="360" rx="24" stroke="%23f59e0b" stroke-width="8"/><rect x="22" y="22" width="756" height="336" rx="16" stroke="%23fbbf24" stroke-width="3" stroke-dasharray="6,6"/><path d="M20,20 L80,20 C50,20 35,35 35,65 C35,35 20,20 20,20 Z" fill="%23f59e0b"/><path d="M20,20 L20,80 C20,50 35,35 65,35 C35,35 20,20 20,20 Z" fill="%23f59e0b"/><path d="M780,20 L720,20 C750,20 765,35 765,65 C765,35 780,20 780,20 Z" fill="%23f59e0b"/><path d="M780,20 L780,80 C780,50 765,35 735,35 C765,35 780,20 780,20 Z" fill="%23f59e0b"/><path d="M20,360 L80,360 C50,360 35,345 35,315 C35,345 20,360 20,360 Z" fill="%23f59e0b"/><path d="M20,360 L20,300 C20,330 35,345 65,345 C35,345 20,360 20,360 Z" fill="%23f59e0b"/><path d="M780,360 L720,360 C750,360 765,345 765,315 C765,345 20,360 20,360 Z" fill="%23f59e0b"/><path d="M780,360 L780,300 C780,330 765,345 735,345 C765,345 780,360 780,360 Z" fill="%23f59e0b"/></svg>',
-  titlePosition: 'left',
+  titlePosition: 'top-left',
+  hideTitleBg: false,
   createdAt: Date.now() - 100000
 };
 
@@ -58,7 +117,8 @@ const DEFAULT_SCHOOL_FRAME: SavedCustomFrame = {
   id: 'frame_school_star_default',
   name: 'ស៊ុមសាលារៀនមេដាយ (School Star Frame)',
   url: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="380" viewBox="0 0 800 380" fill="none"><rect x="12" y="12" width="776" height="356" rx="20" stroke="%233b82f6" stroke-width="6"/><rect x="22" y="22" width="756" height="336" rx="14" stroke="%2360a5fa" stroke-width="2"/><circle cx="40" cy="40" r="14" fill="%23f59e0b"/><path d="M40,30 L43,37 L50,37 L45,41 L47,48 L40,44 L33,48 L35,41 L30,37 L37,37 Z" fill="white"/><circle cx="760" cy="40" r="14" fill="%23f59e0b"/><path d="M760,30 L763,37 L770,37 L765,41 L767,48 L760,44 L753,48 L755,41 L750,37 L757,37 Z" fill="white"/><circle cx="40" cy="340" r="14" fill="%23f59e0b"/><path d="M40,330 L43,337 L50,337 L45,341 L47,348 L40,344 L33,348 L35,341 L30,337 L37,337 Z" fill="white"/><circle cx="760" cy="340" r="14" fill="%23f59e0b"/><path d="M760,330 L763,337 L770,337 L765,341 L767,348 L760,344 L753,348 L755,341 L750,337 L757,337 Z" fill="white"/></svg>',
-  titlePosition: 'left',
+  titlePosition: 'top-left',
+  hideTitleBg: false,
   createdAt: Date.now() - 50000
 };
 
@@ -181,7 +241,8 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
   const [newFrameName, setNewFrameName] = useState<string>('');
   const [newFrameUrlInput, setNewFrameUrlInput] = useState<string>('');
   const [newFramePreview, setNewFramePreview] = useState<string>('');
-  const [newFrameTitlePos, setNewFrameTitlePos] = useState<'left' | 'center' | 'right'>('left');
+  const [newFrameTitlePos, setNewFrameTitlePos] = useState<FrameTitlePosition>('top-left');
+  const [newFrameHideTitleBg, setNewFrameHideTitleBg] = useState<boolean>(false);
   const [frameSuccessMessage, setFrameSuccessMessage] = useState<string>('');
 
   // Persist saved frames & selection to localStorage
@@ -221,15 +282,26 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
     return found ? found.url : '';
   };
 
-  const getFrameTitlePosById = (id: string): 'left' | 'center' | 'right' => {
+  const getFrameTitlePosById = (id: string): FrameTitlePosition => {
     const found = getFrameById(id);
-    return found?.titlePosition || 'left';
+    return normalizeTitlePos(found?.titlePosition);
   };
 
-  const handleUpdateFrameTitlePos = (frameId: string, pos: 'left' | 'center' | 'right', e: React.MouseEvent) => {
+  const getFrameHideTitleBgById = (id: string): boolean => {
+    const found = getFrameById(id);
+    return Boolean(found?.hideTitleBg);
+  };
+
+  const handleUpdateFrameTitlePos = (frameId: string, pos: FrameTitlePosition, e: React.MouseEvent) => {
     e.stopPropagation();
     playClickSound();
     setSavedFrames(prev => prev.map(f => f.id === frameId ? { ...f, titlePosition: pos } : f));
+  };
+
+  const handleToggleFrameTitleBg = (frameId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    playClickSound();
+    setSavedFrames(prev => prev.map(f => f.id === frameId ? { ...f, hideTitleBg: !f.hideTitleBg } : f));
   };
 
   const handleSaveNewFrame = (urlToSave: string, customName?: string) => {
@@ -241,6 +313,7 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
       name: frameName,
       url: urlToSave,
       titlePosition: newFrameTitlePos,
+      hideTitleBg: newFrameHideTitleBg,
       createdAt: Date.now(),
     };
 
@@ -249,7 +322,8 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
     setNewFrameName('');
     setNewFrameUrlInput('');
     setNewFramePreview('');
-    setNewFrameTitlePos('left');
+    setNewFrameTitlePos('top-left');
+    setNewFrameHideTitleBg(false);
     setShowUploadModal(false);
     
     playSuccessSound();
@@ -379,6 +453,7 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
             --body-font-family: 'Kantumruy Pro', sans-serif;
             --card-font-family: 'Kh-MPS-Temple', 'Kantumruy Pro', sans-serif;
             --card-border-style: solid;
+            --title-top-offset: 25px;
             --is-bw: 0;
           }
           
@@ -572,24 +647,92 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
             padding: 24px 32px !important;
             background: transparent !important;
           }
-          .card.has-frame .card-top-left {
-            top: 20px !important;
+
+          /* Hide white background behind title */
+          .card[data-hide-title-bg="true"] .card-top-left {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 2px 4px !important;
+            text-shadow: 0 1px 2px rgba(255,255,255,0.95), 0 0 6px rgba(255,255,255,0.9) !important;
           }
 
+          /* 9 Alignments: Top row */
+          .card[data-title-pos="top-left"] .card-top-left,
           .card[data-title-pos="left"] .card-top-left {
-            left: 32px !important;
+            top: var(--title-top-offset, 25px) !important;
+            left: 28px !important;
+            right: auto !important;
+            bottom: auto !important;
+            transform: none !important;
+            text-align: left !important;
+          }
+          .card[data-title-pos="top-center"] .card-top-left,
+          .card[data-title-pos="center"] .card-top-left {
+            top: var(--title-top-offset, 25px) !important;
+            left: 50% !important;
+            right: auto !important;
+            bottom: auto !important;
+            transform: translateX(-50%) !important;
+            text-align: center !important;
+          }
+          .card[data-title-pos="top-right"] .card-top-left,
+          .card[data-title-pos="right"] .card-top-left {
+            top: var(--title-top-offset, 25px) !important;
+            right: 28px !important;
+            left: auto !important;
+            bottom: auto !important;
+            transform: none !important;
+            text-align: right !important;
+          }
+
+          /* 9 Alignments: Middle row */
+          .card[data-title-pos="middle-left"] .card-top-left {
+            top: 50% !important;
+            left: 28px !important;
+            right: auto !important;
+            bottom: auto !important;
+            transform: translateY(-50%) !important;
+            text-align: left !important;
+          }
+          .card[data-title-pos="middle-center"] .card-top-left {
+            top: 50% !important;
+            left: 50% !important;
+            right: auto !important;
+            bottom: auto !important;
+            transform: translate(-50%, -50%) !important;
+            text-align: center !important;
+          }
+          .card[data-title-pos="middle-right"] .card-top-left {
+            top: 50% !important;
+            right: 28px !important;
+            left: auto !important;
+            bottom: auto !important;
+            transform: translateY(-50%) !important;
+            text-align: right !important;
+          }
+
+          /* 9 Alignments: Bottom row */
+          .card[data-title-pos="bottom-left"] .card-top-left {
+            bottom: 18px !important;
+            left: 28px !important;
+            top: auto !important;
             right: auto !important;
             transform: none !important;
             text-align: left !important;
           }
-          .card[data-title-pos="center"] .card-top-left {
+          .card[data-title-pos="bottom-center"] .card-top-left {
+            bottom: 18px !important;
             left: 50% !important;
+            top: auto !important;
             right: auto !important;
             transform: translateX(-50%) !important;
             text-align: center !important;
           }
-          .card[data-title-pos="right"] .card-top-left {
-            right: 32px !important;
+          .card[data-title-pos="bottom-right"] .card-top-left {
+            bottom: 18px !important;
+            right: 28px !important;
+            top: auto !important;
             left: auto !important;
             transform: none !important;
             text-align: right !important;
@@ -636,7 +779,7 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
           
           .card-top-left {
             position: absolute;
-            top: 18px;
+            top: var(--title-top-offset, 25px);
             left: 24px;
             color: var(--card-color);
             background: rgba(255, 255, 255, 0.8);
@@ -716,6 +859,18 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
               </select>
             </div>
             <div class="control-group">
+              <label>ផ្ទៃសចំណងជើង៖</label>
+              <select id="titleBgSelect" class="font-select">
+                <option value="default">⚙️ តាមស៊ុមនីមួយៗ</option>
+                <option value="hide">🚫 លុបផ្ទៃស (ថ្លា) គ្រប់បណ្ណ</option>
+                <option value="show">⬜ បង្ហាញផ្ទៃស គ្រប់បណ្ណ</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label>រំកិលចំណងជើងចុះក្រោម៖ <span id="titleTopVal">25px</span></label>
+              <input type="range" id="titleTopSlider" min="14" max="65" value="25" style="width: 75px; cursor: pointer; accent-color: #2563eb;" title="រំកិលចំណងជើងចុះក្រោម ឬឡើងលើ" />
+            </div>
+            <div class="control-group">
               <label>ពណ៌ពាក្យ៖</label>
               <select id="colorModeSelect" class="font-select">
                 <option value="multi">🎨 ពណ៌ចម្រុះតាមបណ្ណ</option>
@@ -759,6 +914,7 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
           const cardFrameId = frameSelectionMode === 'slots' ? (slotFrameIds[idx] || 'none') : activeFrameId;
           const cardFrameUrl = getFrameUrlById(cardFrameId);
           const cardTitlePos = getFrameTitlePosById(cardFrameId);
+          const cardHideBg = getFrameHideTitleBgById(cardFrameId);
           const hasFrame = Boolean(cardFrameUrl);
 
           let frameMarkup = '';
@@ -769,7 +925,7 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
           if (globalCardIndex === 0) {
             const titleText = topicName || 'ប័ណ្ណពាក្យ';
             htmlContent += `
-              <div class="card ${hasFrame ? 'has-frame' : ''}" data-frame-id="${cardFrameId}" data-title-pos="${cardTitlePos}" data-original-color="${color}" style="--card-color: ${color};">
+              <div class="card ${hasFrame ? 'has-frame' : ''}" data-frame-id="${cardFrameId}" data-title-pos="${cardTitlePos}" data-hide-title-bg="${cardHideBg ? 'true' : 'false'}" data-original-color="${color}" style="--card-color: ${color};">
                 ${frameMarkup}
                 <div class="card-inner">
                   <h2 class="card-word" style="font-size: 32pt;">${titleText}</h2>
@@ -782,7 +938,7 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
             const typeDisplay = cleanType || (topicName || 'ពាក្យ');
 
             htmlContent += `
-              <div class="card ${hasFrame ? 'has-frame' : ''}" data-frame-id="${cardFrameId}" data-title-pos="${cardTitlePos}" data-original-color="${color}" style="--card-color: ${color};">
+              <div class="card ${hasFrame ? 'has-frame' : ''}" data-frame-id="${cardFrameId}" data-title-pos="${cardTitlePos}" data-hide-title-bg="${cardHideBg ? 'true' : 'false'}" data-original-color="${color}" style="--card-color: ${color};">
                 ${frameMarkup}
                 <div class="card-inner">
                   <div class="card-top-left">${typeDisplay}</div>
@@ -808,11 +964,15 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
             savedFrames.reduce((acc, f) => { acc[f.id] = f.url; return acc; }, {} as Record<string, string>)
           )};
           window.savedFramesPosMap = ${JSON.stringify(
-            savedFrames.reduce((acc, f) => { acc[f.id] = f.titlePosition || 'left'; return acc; }, {} as Record<string, string>)
+            savedFrames.reduce((acc, f) => { acc[f.id] = normalizeTitlePos(f.titlePosition); return acc; }, {} as Record<string, string>)
+          )};
+          window.savedFramesHideBgMap = ${JSON.stringify(
+            savedFrames.reduce((acc, f) => { acc[f.id] = Boolean(f.hideTitleBg); return acc; }, {} as Record<string, boolean>)
           )};
           window.slotFrameIds = ${JSON.stringify(slotFrameIds)};
 
           const borderSelect = document.getElementById('borderSelect');
+          const titleBgSelect = document.getElementById('titleBgSelect');
           const colorModeSelect = document.getElementById('colorModeSelect');
           const uniformColorContainer = document.getElementById('uniformColorContainer');
           const colorDots = document.querySelectorAll('.color-dot');
@@ -843,8 +1003,18 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
 
               card.querySelectorAll('.custom-frame-overlay').forEach(el => el.remove());
               const url = window.savedFramesMap[frameId];
-              const pos = window.savedFramesPosMap[frameId] || 'left';
+              const pos = window.savedFramesPosMap[frameId] || 'top-left';
+              const hideBg = window.savedFramesHideBgMap[frameId] || false;
+              card.setAttribute('data-frame-id', frameId);
               card.setAttribute('data-title-pos', pos);
+
+              if (titleBgSelect && titleBgSelect.value === 'hide') {
+                card.setAttribute('data-hide-title-bg', 'true');
+              } else if (titleBgSelect && titleBgSelect.value === 'show') {
+                card.setAttribute('data-hide-title-bg', 'false');
+              } else {
+                card.setAttribute('data-hide-title-bg', hideBg ? 'true' : 'false');
+              }
 
               if (url) {
                 card.classList.add('has-frame');
@@ -854,6 +1024,34 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
               }
             });
           });
+
+          if (titleBgSelect) {
+            titleBgSelect.addEventListener('change', (e) => {
+              const val = e.target.value;
+              const cards = document.querySelectorAll('.card');
+              cards.forEach(card => {
+                if (val === 'hide') {
+                  card.setAttribute('data-hide-title-bg', 'true');
+                } else if (val === 'show') {
+                  card.setAttribute('data-hide-title-bg', 'false');
+                } else {
+                  const frameId = card.getAttribute('data-frame-id') || 'none';
+                  const hide = window.savedFramesHideBgMap[frameId] || false;
+                  card.setAttribute('data-hide-title-bg', hide ? 'true' : 'false');
+                }
+              });
+            });
+          }
+
+          const titleTopSlider = document.getElementById('titleTopSlider');
+          const titleTopVal = document.getElementById('titleTopVal');
+          if (titleTopSlider && titleTopVal) {
+            titleTopSlider.addEventListener('input', (e) => {
+              const val = e.target.value + 'px';
+              titleTopVal.textContent = val;
+              document.documentElement.style.setProperty('--title-top-offset', val);
+            });
+          }
 
           colorModeSelect.addEventListener('change', (e) => {
             const mode = e.target.value;
@@ -906,6 +1104,12 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
           
           resetBtn.addEventListener('click', () => {
             borderSelect.value = "none";
+            if (titleBgSelect) titleBgSelect.value = "default";
+            if (titleTopSlider && titleTopVal) {
+              titleTopSlider.value = "25";
+              titleTopVal.textContent = "25px";
+              document.documentElement.style.setProperty('--title-top-offset', '25px');
+            }
             colorModeSelect.value = "multi";
             uniformColorContainer.style.display = 'none';
             fontSizeSlider.value = "64";
@@ -919,6 +1123,8 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
             bwBtn.classList.remove('active-color');
             document.querySelectorAll('.card').forEach(c => {
               c.classList.remove('has-frame');
+              c.removeAttribute('data-hide-title-bg');
+              c.setAttribute('data-title-pos', 'top-left');
               const orig = c.getAttribute('data-original-color');
               if (orig) c.style.setProperty('--card-color', orig);
             });
@@ -1244,6 +1450,7 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
               const activeStudyFrameId = frameSelectionMode === 'slots' ? (slotFrameIds[currentIndex % 3] || 'none') : activeFrameId;
               const activeStudyFrameUrl = getFrameUrlById(activeStudyFrameId);
               const activeStudyFrameTitlePos = getFrameTitlePosById(activeStudyFrameId);
+              const activeStudyFrameHideBg = getFrameHideTitleBgById(activeStudyFrameId);
 
               return (
                 <motion.div
@@ -1273,13 +1480,15 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
                   )}
 
                   {/* Title Position Label on Card */}
-                  <div className={`absolute top-6 z-[50] text-xs font-bold px-4 py-1.5 rounded-full transition-all ${
-                    activeStudyFrameTitlePos === 'center'
-                      ? 'left-1/2 -translate-x-1/2 text-center'
-                      : activeStudyFrameTitlePos === 'right'
-                        ? 'right-16 text-right'
-                        : 'left-6 text-left'
-                  } ${isFlipped ? 'bg-white/10 text-stone-200 border-0 rounded-full px-4 py-1.5' : 'bg-white/80 text-[var(--card-color)] border-0 shadow-none rounded-full px-4 py-1.5'}`}>
+                  <div className={`absolute z-[50] text-xs font-bold px-4 py-1.5 transition-all ${
+                    getStudyCardTitlePositionClasses(activeStudyFrameTitlePos)
+                  } ${
+                    activeStudyFrameHideBg
+                      ? 'bg-transparent text-[var(--card-color)] border-0 shadow-none drop-shadow-[0_1px_2px_rgba(255,255,255,0.95)]'
+                      : isFlipped 
+                        ? 'bg-white/10 text-stone-200 border-0 rounded-full' 
+                        : 'bg-white/85 text-[var(--card-color)] border border-amber-300/60 shadow-xs rounded-full'
+                  }`}>
                     {currentWord.wordType ? currentWord.wordType.replace(/^អំណាន\s*[:៖]?\s*/i, '').trim() || (topicName || 'ពាក្យ') : (topicName || 'ពាក្យ')}
                   </div>
                   
@@ -1480,7 +1689,8 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
                   {/* Saved Custom Frames Cards */}
                   {savedFrames.map((frame) => {
                     const isSelected = activeFrameId === frame.id;
-                    const currentPos = frame.titlePosition || 'left';
+                    const currentPos = normalizeTitlePos(frame.titlePosition);
+                    const hideBg = Boolean(frame.hideTitleBg);
                     return (
                       <div
                         key={frame.id}
@@ -1492,12 +1702,16 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
                         }`}
                       >
                         {/* Frame Thumbnail Preview */}
-                        <div className="w-full h-16 bg-slate-100 rounded-xl overflow-hidden relative border border-slate-200/80 flex items-center justify-center">
+                        <div className="w-full h-18 bg-slate-100 rounded-xl overflow-hidden relative border border-slate-200/80 flex items-center justify-center">
                           <img src={frame.url} alt={frame.name} className="w-full h-full object-fill" onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }} />
-                          <span className={`absolute top-1 z-20 text-[9px] font-bold text-amber-900 bg-white border border-amber-300 px-2 py-0.5 rounded-full shadow-2xs ${
-                            currentPos === 'center' ? 'left-1/2 -translate-x-1/2' : currentPos === 'right' ? 'right-1' : 'left-1'
+                          <span className={`absolute z-20 text-[9px] font-bold transition-all px-1.5 py-0.5 rounded-full ${
+                            getTitlePositionClasses(currentPos)
+                          } ${
+                            hideBg 
+                              ? 'bg-transparent text-amber-950 drop-shadow-[0_1px_1px_rgba(255,255,255,0.9)]' 
+                              : 'text-amber-900 bg-white/90 border border-amber-300 shadow-2xs'
                           }`}>
-                            ចំណងជើង...
+                            ចំណងជើង
                           </span>
                         </div>
 
@@ -1521,31 +1735,35 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
                           </div>
                         </div>
 
-                        {/* Title Position Selector Buttons */}
-                        <div className="mt-2 pt-1.5 border-t border-amber-100 flex items-center justify-between gap-1 text-[10px]" onClick={(e) => e.stopPropagation()}>
-                          <span className="font-bold text-stone-500 shrink-0">ចំណងជើង៖</span>
-                          <div className="flex bg-stone-100 p-0.5 rounded-lg font-bold gap-0.5">
+                        {/* Title Background Toggle & Position Selector */}
+                        <div className="mt-2 pt-1.5 border-t border-amber-100 flex flex-col gap-1.5 text-[10px]" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-stone-600">ផ្ទៃស៖</span>
                             <button
-                              onClick={(e) => handleUpdateFrameTitlePos(frame.id, 'left', e)}
-                              className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${currentPos === 'left' ? 'bg-amber-500 text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
-                              title="តម្រឹមឆ្វេង"
+                              type="button"
+                              onClick={(e) => handleToggleFrameTitleBg(frame.id, e)}
+                              className={`px-2 py-0.5 rounded-md font-bold transition-all cursor-pointer text-[10px] flex items-center gap-1 ${
+                                hideBg 
+                                  ? 'bg-rose-100 text-rose-700 hover:bg-rose-200 border border-rose-200' 
+                                  : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border border-emerald-200'
+                              }`}
+                              title={hideBg ? "ចុចដើម្បីបង្ហាញផ្ទៃស" : "ចុចដើម្បីលុបផ្ទៃស"}
                             >
-                              ឆ្វេង
+                              {hideBg ? '🚫 គ្មានផ្ទៃស' : '⬜ មានផ្ទៃស'}
                             </button>
-                            <button
-                              onClick={(e) => handleUpdateFrameTitlePos(frame.id, 'center', e)}
-                              className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${currentPos === 'center' ? 'bg-amber-500 text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
-                              title="តម្រឹមកណ្ដាល"
+                          </div>
+
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="font-bold text-stone-600 shrink-0">តម្រឹម ៩ ៖</span>
+                            <select
+                              value={currentPos}
+                              onChange={(e) => handleUpdateFrameTitlePos(frame.id, e.target.value as FrameTitlePosition, e)}
+                              className="p-1 text-[10px] font-bold border border-stone-200 bg-stone-50 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer w-32"
                             >
-                              កណ្ដាល
-                            </button>
-                            <button
-                              onClick={(e) => handleUpdateFrameTitlePos(frame.id, 'right', e)}
-                              className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${currentPos === 'right' ? 'bg-amber-500 text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
-                              title="តម្រឹមស្តាំ"
-                            >
-                              ស្តាំ
-                            </button>
+                              {FRAME_POSITIONS.map(p => (
+                                <option key={p.id} value={p.id}>{p.label.split(' ')[0]}</option>
+                              ))}
+                            </select>
                           </div>
                         </div>
                       </div>
@@ -1606,15 +1824,20 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
                     const currentFrameId = frameSelectionMode === 'slots' ? slotFrameIds[idx] : activeFrameId;
                     const frameUrl = getFrameUrlById(currentFrameId);
                     const titlePos = getFrameTitlePosById(currentFrameId);
+                    const hideBg = getFrameHideTitleBgById(currentFrameId);
                     return (
                       <div key={idx} className="flex-1 h-24 sm:h-28 bg-white rounded-xl relative flex flex-col items-center justify-center p-2 shadow-sm overflow-hidden border-2 border-amber-400">
                         {frameUrl && (
                           <img src={frameUrl} alt="Frame Overlay" className="absolute inset-0 w-full h-full object-fill pointer-events-none z-10" onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }} />
                         )}
-                        <span className={`text-[10px] font-bold text-amber-900 bg-white border border-amber-300 rounded-full px-2.5 py-0.5 shadow-2xs absolute top-2 z-30 ${
-                          titlePos === 'center' ? 'left-1/2 -translate-x-1/2 text-center' : titlePos === 'right' ? 'right-2 text-right' : 'left-2 text-left'
+                        <span className={`text-[10px] font-bold rounded-full px-2 py-0.5 absolute z-30 transition-all ${
+                          getTitlePositionClasses(titlePos)
+                        } ${
+                          hideBg
+                            ? 'bg-transparent text-amber-950 drop-shadow-[0_1px_1px_rgba(255,255,255,0.9)]'
+                            : 'text-amber-900 bg-white/90 border border-amber-300 shadow-2xs'
                         }`}>
-                          ចំណងជើង...
+                          ចំណងជើង
                         </span>
                         <span className="text-xs font-bold text-charcoal font-['Kh-MPS-Temple'] relative z-20 mt-3">
                           បណ្ណទី{idx + 1}
@@ -1716,51 +1939,52 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
                   />
                 </div>
 
-                {/* Title Position Selector */}
+                {/* Title Background Toggle (Remove White Background) */}
+                <div className="p-3 bg-stone-50 border border-stone-200 rounded-2xl flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-bold text-charcoal">ផ្ទៃសនៅពីក្រោយចំណងជើង ៖</div>
+                    <div className="text-[10px] text-stone-500">លុបផ្ទៃសដើម្បីឲ្យថ្លា បង្ហាញក្បូរក្បាច់ស៊ុមសុទ្ធ</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { playClickSound(); setNewFrameHideTitleBg(!newFrameHideTitleBg); }}
+                    className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
+                      newFrameHideTitleBg
+                        ? 'bg-rose-500 text-white hover:bg-rose-600'
+                        : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                    }`}
+                  >
+                    {newFrameHideTitleBg ? '🚫 លុបផ្ទៃស (ថ្លា)' : '⬜ មានផ្ទៃស (ធម្មតា)'}
+                  </button>
+                </div>
+
+                {/* 9 Title Position Selector Grid */}
                 <div>
                   <label className="text-xs font-bold text-charcoal block mb-1.5 flex items-center justify-between">
-                    <span>ទីតាំងចំណងជើងពាក្យ (Title Position) ៖</span>
-                    <span className="text-[11px] text-amber-700 font-bold bg-amber-100 px-2 py-0.5 rounded-md">
-                      {newFrameTitlePos === 'left' ? 'ឆ្វេង (Left)' : newFrameTitlePos === 'center' ? 'កណ្ដាល (Center)' : 'ស្តាំ (Right)'}
+                    <span>តម្រឹមទីតាំងចំណងជើង (៩ ទីតាំង) ៖</span>
+                    <span className="text-[11px] text-amber-800 font-bold bg-amber-100 px-2.5 py-0.5 rounded-md">
+                      {FRAME_POSITIONS.find(p => p.id === newFrameTitlePos)?.label || 'ឆ្វេងលើ'}
                     </span>
                   </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => { playClickSound(); setNewFrameTitlePos('left'); }}
-                      className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                        newFrameTitlePos === 'left'
-                          ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
-                          : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
-                      }`}
-                    >
-                      <AlignLeft size={16} />
-                      <span>ឆ្វេង</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { playClickSound(); setNewFrameTitlePos('center'); }}
-                      className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                        newFrameTitlePos === 'center'
-                          ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
-                          : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
-                      }`}
-                    >
-                      <AlignCenter size={16} />
-                      <span>កណ្ដាល</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { playClickSound(); setNewFrameTitlePos('right'); }}
-                      className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                        newFrameTitlePos === 'right'
-                          ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
-                          : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
-                      }`}
-                    >
-                      <AlignRight size={16} />
-                      <span>ស្តាំ</span>
-                    </button>
+                  <div className="grid grid-cols-3 gap-1.5 bg-stone-100/90 p-2 rounded-2xl border border-stone-200">
+                    {FRAME_POSITIONS.map((pos) => {
+                      const isSelected = newFrameTitlePos === pos.id;
+                      return (
+                        <button
+                          key={pos.id}
+                          type="button"
+                          onClick={() => { playClickSound(); setNewFrameTitlePos(pos.id); }}
+                          className={`py-2 px-1 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer border ${
+                            isSelected
+                              ? 'bg-amber-500 text-white border-amber-600 shadow-xs ring-1 ring-amber-400'
+                              : 'bg-white text-stone-700 border-stone-200 hover:bg-amber-50/70'
+                          }`}
+                        >
+                          <span className="leading-tight">{pos.label.split(' ')[0]}</span>
+                          <span className="text-[9px] opacity-75 font-medium">{pos.label.split(' ')[1]}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -1776,13 +2000,13 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
                     <div className="w-full h-28 bg-white rounded-xl border border-amber-300 overflow-hidden relative flex items-center justify-center p-3 shadow-inner">
                       <img src={newFramePreview} alt="Preview" className="absolute inset-0 w-full h-full object-fill pointer-events-none z-10" onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }} />
                       
-                      {/* Dynamic Title Position in Live Preview */}
-                      <span className={`absolute top-2 z-30 text-[11px] font-bold text-amber-900 bg-white border border-amber-300 px-3 py-1 rounded-full shadow-xs ${
-                        newFrameTitlePos === 'center'
-                          ? 'left-1/2 -translate-x-1/2 text-center'
-                          : newFrameTitlePos === 'right'
-                            ? 'right-3 text-right'
-                            : 'left-3 text-left'
+                      {/* Dynamic Title Position and Background in Live Preview */}
+                      <span className={`absolute z-30 text-[11px] font-bold px-2.5 py-0.5 transition-all ${
+                        getTitlePositionClasses(newFrameTitlePos)
+                      } ${
+                        newFrameHideTitleBg
+                          ? 'bg-transparent text-amber-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.95)]'
+                          : 'text-amber-900 bg-white/95 border border-amber-300 rounded-full shadow-xs'
                       }`}>
                         ពាក្យ
                       </span>
