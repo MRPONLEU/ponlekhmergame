@@ -10,10 +10,12 @@ import {
   Trophy, 
   Check, 
   X, 
+  Delete,
   Flame,
   Award,
   Sparkles,
   Zap,
+  Crown,
   HelpCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -24,7 +26,7 @@ interface MathTugOfWarProps {
   onBack: () => void;
 }
 
-type MathOperation = 'mul' | 'add' | 'sub' | 'div' | 'mixed';
+type MathOperation = 'mul' | 'add' | 'sub' | 'div' | 'decimal' | 'mixed';
 type DifficultyLevel = 'easy' | 'medium' | 'hard';
 type Language = 'kh' | 'en';
 
@@ -82,12 +84,55 @@ export default function MathTugOfWar({ onBack }: MathTugOfWarProps) {
     else if (targetOp === 'add') chosenOp = '+';
     else if (targetOp === 'sub') chosenOp = '-';
     else if (targetOp === 'div') chosenOp = '÷';
+    else if (targetOp === 'decimal') {
+      const decOps: ('×' | '+' | '-' | '÷')[] = ['+', '-', '×', '÷'];
+      chosenOp = decOps[Math.floor(Math.random() * decOps.length)];
+    }
 
     let n1 = 1;
     let n2 = 1;
     let ans = 1;
 
-    if (chosenOp === '×') {
+    if (targetOp === 'decimal') {
+      if (chosenOp === '+') {
+        const a = (Math.floor(Math.random() * 40) + 5) * 0.5;
+        const b = (Math.floor(Math.random() * 30) + 5) * 0.5;
+        n1 = parseFloat(a.toFixed(1));
+        n2 = parseFloat(b.toFixed(1));
+        ans = parseFloat((n1 + n2).toFixed(1));
+      } else if (chosenOp === '-') {
+        const b = (Math.floor(Math.random() * 20) + 5) * 0.5;
+        const diff = (Math.floor(Math.random() * 20) + 5) * 0.5;
+        n1 = parseFloat((b + diff).toFixed(1));
+        n2 = parseFloat(b.toFixed(1));
+        ans = parseFloat(diff.toFixed(1));
+      } else if (chosenOp === '×') {
+        const decMultiplier = [0.5, 1.5, 2.5, 0.2, 0.4, 1.2][Math.floor(Math.random() * 6)];
+        const whole = Math.floor(Math.random() * 6) + 2;
+        n1 = decMultiplier;
+        n2 = whole;
+        ans = parseFloat((n1 * n2).toFixed(1));
+      } else {
+        const divPairs = [
+          [5, 2, 2.5],
+          [7, 2, 3.5],
+          [3, 2, 1.5],
+          [9, 2, 4.5],
+          [1, 2, 0.5],
+          [6, 4, 1.5],
+          [7.5, 3, 2.5],
+          [4.5, 3, 1.5],
+          [2.4, 2, 1.2],
+          [3.6, 3, 1.2],
+          [8, 5, 1.6],
+          [4, 5, 0.8]
+        ];
+        const chosen = divPairs[Math.floor(Math.random() * divPairs.length)];
+        n1 = chosen[0];
+        n2 = chosen[1];
+        ans = chosen[2];
+      }
+    } else if (chosenOp === '×') {
       if (targetDiff === 'easy') {
         n1 = Math.floor(Math.random() * 5) + 1; // 1-5
         n2 = Math.floor(Math.random() * 5) + 1; // 1-5
@@ -205,10 +250,12 @@ export default function MathTugOfWar({ onBack }: MathTugOfWarProps) {
   // Submit Answer for Team 1 (Left / Blue)
   const submitTeam1 = () => {
     if (!currentQuestion || winner) return;
-    const userVal = parseInt(t1Input.trim(), 10);
+    const raw = t1Input.trim();
+    if (!raw) return;
+    const userVal = parseFloat(raw);
     if (isNaN(userVal)) return;
 
-    if (userVal === currentQuestion.answer) {
+    if (Math.abs(userVal - currentQuestion.answer) < 0.001) {
       if (soundEnabled) playSuccessSound();
       setT1Score(prev => prev + 1);
       setT1SuccessFlash(true);
@@ -235,10 +282,12 @@ export default function MathTugOfWar({ onBack }: MathTugOfWarProps) {
   // Submit Answer for Team 2 (Right / Red)
   const submitTeam2 = () => {
     if (!currentQuestion || winner) return;
-    const userVal = parseInt(t2Input.trim(), 10);
+    const raw = t2Input.trim();
+    if (!raw) return;
+    const userVal = parseFloat(raw);
     if (isNaN(userVal)) return;
 
-    if (userVal === currentQuestion.answer) {
+    if (Math.abs(userVal - currentQuestion.answer) < 0.001) {
       if (soundEnabled) playSuccessSound();
       setT2Score(prev => prev + 1);
       setT2SuccessFlash(true);
@@ -267,10 +316,18 @@ export default function MathTugOfWar({ onBack }: MathTugOfWarProps) {
     if (soundEnabled) playClickSound();
     if (val === 'C') {
       setT1Input('');
+    } else if (val === 'backspace') {
+      setT1Input(prev => prev.slice(0, -1));
+    } else if (val === '.') {
+      setT1Input(prev => {
+        if (prev.includes('.')) return prev;
+        if (!prev) return '0.';
+        return prev + '.';
+      });
     } else if (val === 'submit') {
       submitTeam1();
     } else {
-      if (t1Input.length < 5) {
+      if (t1Input.length < 8) {
         setT1Input(prev => prev === '0' ? val : prev + val);
       }
     }
@@ -280,10 +337,18 @@ export default function MathTugOfWar({ onBack }: MathTugOfWarProps) {
     if (soundEnabled) playClickSound();
     if (val === 'C') {
       setT2Input('');
+    } else if (val === 'backspace') {
+      setT2Input(prev => prev.slice(0, -1));
+    } else if (val === '.') {
+      setT2Input(prev => {
+        if (prev.includes('.')) return prev;
+        if (!prev) return '0.';
+        return prev + '.';
+      });
     } else if (val === 'submit') {
       submitTeam2();
     } else {
-      if (t2Input.length < 5) {
+      if (t2Input.length < 8) {
         setT2Input(prev => prev === '0' ? val : prev + val);
       }
     }
@@ -302,8 +367,12 @@ export default function MathTugOfWar({ onBack }: MathTugOfWarProps) {
           handleT2Key(digit);
         } else if (e.code === 'NumpadEnter') {
           submitTeam2();
-        } else if (e.code === 'NumpadDecimal' || e.code === 'Delete') {
+        } else if (e.code === 'NumpadDecimal') {
+          handleT2Key('.');
+        } else if (e.code === 'Delete') {
           handleT2Key('C');
+        } else if (e.code === 'Backspace') {
+          handleT2Key('backspace');
         }
         return;
       }
@@ -314,10 +383,14 @@ export default function MathTugOfWar({ onBack }: MathTugOfWarProps) {
         if (/^[0-9]$/.test(digit)) {
           handleT1Key(digit);
         }
+      } else if (e.code === 'Period' || e.key === '.') {
+        handleT1Key('.');
       } else if (e.code === 'Enter') {
         submitTeam1();
-      } else if (e.code === 'KeyC' || e.code === 'Backspace') {
+      } else if (e.code === 'KeyC') {
         handleT1Key('C');
+      } else if (e.code === 'Backspace') {
+        handleT1Key('backspace');
       }
     };
 
@@ -343,8 +416,8 @@ export default function MathTugOfWar({ onBack }: MathTugOfWarProps) {
 
   // Calculate pixel displacement for the rope and characters
   // pullBalance ranges from -targetWinPulls to +targetWinPulls (e.g. -6 to +6)
-  // Max pixel offset = approx 130px left or right
-  const maxDisplacementPx = 130;
+  // Max pixel offset = approx 160px left or right
+  const maxDisplacementPx = 160;
   const displacementPx = (pullBalance / targetWinPulls) * maxDisplacementPx;
 
   return (
@@ -446,113 +519,23 @@ export default function MathTugOfWar({ onBack }: MathTugOfWarProps) {
         </div>
       </header>
 
-      {/* 2. Main Arena & Dual Panels Layout */}
-      <main className="flex-1 max-w-[1600px] w-full mx-auto p-3 sm:p-5 flex flex-col lg:flex-row gap-4 items-stretch justify-center relative">
+      {/* 2. Main Arena & Dual Panels Layout: Top = Tug of War Arena, Bottom = 2-Row Keypads */}
+      <main className="flex-1 max-w-[1500px] w-full mx-auto p-2 sm:p-4 flex flex-col gap-3 sm:gap-4 items-stretch justify-between relative overflow-hidden">
         
-        {/* ================= LEFT PANEL: ក្រុមទី ១ (Team 1 - Blue Keypad) ================= */}
-        <div 
-          id="panel-team-1"
-          className="w-full lg:w-[300px] xl:w-[330px] bg-sky-50/70 border-2 border-sky-200/80 rounded-3xl p-4 sm:p-5 shadow-xs flex flex-col justify-between shrink-0 transition-all"
-        >
-          {/* Team 1 Header */}
-          <div className="bg-sky-600 text-white font-bold py-2.5 px-4 rounded-2xl flex items-center justify-between shadow-xs mb-3">
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-white animate-pulse" />
-              <span className="text-base sm:text-lg font-black tracking-wide">ក្រុមទី ១</span>
-            </div>
-            <div className="bg-white text-sky-700 font-black text-sm sm:text-base px-3 py-0.5 rounded-full shadow-inner">
-              {t1Score}
-            </div>
-          </div>
-
-          {/* Answer Display Box (ប្រអប់ចម្លើយ) */}
-          <motion.div 
-            animate={
-              t1Shake 
-                ? { x: [-10, 10, -8, 8, -4, 4, 0] } 
-                : t1SuccessFlash 
-                ? { scale: [1, 1.05, 1], backgroundColor: ['#ffffff', '#e0f2fe', '#ffffff'] }
-                : {}
-            }
-            className={`w-full min-h-[66px] bg-white border-2 rounded-2xl py-2 px-4 text-center flex items-center justify-center transition-colors shadow-xs ${
-              t1Shake 
-                ? 'border-rose-400 text-rose-600 bg-rose-50' 
-                : t1SuccessFlash
-                ? 'border-sky-500 ring-2 ring-sky-300'
-                : 'border-slate-200/90 text-slate-800'
-            }`}
-          >
-            {t1Input ? (
-              <span className="text-3xl sm:text-4xl font-black font-mono tracking-widest text-slate-800">
-                {t1Input}
-              </span>
-            ) : (
-              <span className="text-3xl sm:text-4xl font-black font-mono text-slate-300">
-                0
-              </span>
-            )}
-          </motion.div>
-
-          {/* Numpad Keypad (3x4 Grid matching screenshot) */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-2.5 my-3">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => (
-              <button
-                key={`t1-${digit}`}
-                onClick={() => handleT1Key(digit.toString())}
-                className="bg-white hover:bg-slate-50 active:scale-95 text-slate-800 font-black text-2xl sm:text-3xl py-3.5 sm:py-4 rounded-2xl border border-slate-200/90 shadow-xs transition-all flex items-center justify-center cursor-pointer select-none"
-              >
-                {digit}
-              </button>
-            ))}
-
-            {/* Clear Button (Red X) */}
-            <button
-              onClick={() => handleT1Key('C')}
-              className="bg-[#f43f5e] hover:bg-[#e11d48] active:scale-95 text-white font-black py-3.5 sm:py-4 rounded-2xl shadow-xs transition-all flex items-center justify-center cursor-pointer select-none"
-              title="លុបចោល"
-            >
-              <X size={28} strokeWidth={3.5} />
-            </button>
-
-            {/* Zero Button */}
-            <button
-              onClick={() => handleT1Key('0')}
-              className="bg-white hover:bg-slate-50 active:scale-95 text-slate-800 font-black text-2xl sm:text-3xl py-3.5 sm:py-4 rounded-2xl border border-slate-200/90 shadow-xs transition-all flex items-center justify-center cursor-pointer select-none"
-            >
-              0
-            </button>
-
-            {/* Submit Button (Vibrant Blue Checkmark matching screenshot) */}
-            <button
-              onClick={() => handleT1Key('submit')}
-              className="bg-[#0080dd] hover:bg-blue-600 active:scale-95 text-white font-black py-3.5 sm:py-4 rounded-2xl shadow-xs transition-all flex items-center justify-center cursor-pointer select-none"
-              title="ផ្ទៀងផ្ទាត់ចម្លើយ"
-            >
-              <Check size={28} strokeWidth={3.5} />
-            </button>
-          </div>
-
-          {/* Bottom Team Hint */}
-          <div className="text-center text-xs font-semibold text-slate-400 pt-1">
-            ក្រុមទី ១៖ ចុចប៊ូតុងលើអេក្រង់ ឬ លេខលើ Keyboard
-          </div>
-        </div>
-
-
-        {/* ================= CENTER ARENA: TUG-OF-WAR FIELD ================= */}
+        {/* ================= TOP: TUG-OF-WAR ARENA (Full Width) ================= */}
         <div 
           id="arena-tug-field"
-          className="flex-1 bg-white border-2 border-slate-200/90 rounded-3xl p-4 sm:p-6 shadow-xs flex flex-col justify-between overflow-hidden relative"
+          className="flex-1 bg-white border-2 border-slate-200/90 rounded-3xl p-3 sm:p-5 shadow-xs flex flex-col justify-between overflow-hidden relative min-h-[280px] sm:min-h-[340px]"
         >
-          {/* Arena Top: Central Big Exercise */}
-          <div className="flex items-center justify-center pb-3 border-b border-slate-100">
+          {/* Arena Top: Central Big Exercise Card */}
+          <div className="flex items-center justify-center pb-2 border-b border-slate-100">
             {/* Central Big Exercise Card (ផ្ទាំងលំហាត់ ធំ) */}
             <motion.div 
               key={currentQuestion ? currentQuestion.text : 'empty'}
               initial={{ scale: 0.92, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-              className={`w-full max-w-xl bg-gradient-to-b from-white via-slate-50/50 to-indigo-50/20 border-2 rounded-3xl py-4 sm:py-5 px-6 sm:px-10 text-center shadow-md relative overflow-hidden transition-all ${
+              className={`w-full max-w-xl bg-gradient-to-b from-white via-slate-50/50 to-indigo-50/20 border-2 rounded-2xl sm:rounded-3xl py-3 sm:py-4 px-6 sm:px-10 text-center shadow-md relative overflow-hidden transition-all ${
                 lastWinnerTeam === 'team1' 
                   ? 'border-sky-500 shadow-sky-200 ring-4 ring-sky-200' 
                   : lastWinnerTeam === 'team2'
@@ -561,8 +544,8 @@ export default function MathTugOfWar({ onBack }: MathTugOfWarProps) {
               }`}
             >
               {/* Small indicator badge */}
-              <div className="inline-flex items-center gap-1.5 px-3.5 py-0.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-black mb-1">
-                <Sparkles size={14} className="text-indigo-600" />
+              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-[11px] sm:text-xs font-black mb-0.5">
+                <Sparkles size={13} className="text-indigo-600" />
                 <span>លំហាត់ប្រកួតរួម</span>
               </div>
 
@@ -589,65 +572,244 @@ export default function MathTugOfWar({ onBack }: MathTugOfWarProps) {
             </motion.div>
           </div>
 
-          {/* SVG Canvas Area for Tug of War Scene */}
-          <div className="flex-1 flex items-center justify-center my-4 relative min-h-[280px] sm:min-h-[340px] md:min-h-[380px] overflow-hidden">
+          {/* Tug of War Interactive Stage */}
+          <div className="flex-1 flex items-center justify-center my-2 sm:my-3 relative min-h-[170px] sm:min-h-[220px] md:min-h-[260px] overflow-hidden">
             {/* Background Lines & Markers */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               {/* Neutral Center Dotted Line */}
-              <div className="absolute top-4 bottom-8 w-0 border-r-2 border-dotted border-slate-300 left-1/2 -translate-x-1/2 z-0" />
+              <div className="absolute top-2 bottom-4 w-0 border-r-2 border-dotted border-slate-300/80 left-1/2 -translate-x-1/2 z-0" />
               
               {/* Team 1 Win Threshold Line (Left) */}
               <div 
                 style={{ left: `calc(50% - ${maxDisplacementPx}px)` }}
-                className="absolute top-6 bottom-10 w-0 border-r-2 border-dashed border-sky-400 opacity-60 z-0"
-              >
-                <span className="absolute -top-5 -left-12 text-[11px] font-bold text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded border border-sky-200">
-                  បន្ទាត់ឈ្នះ ក្រុម ១
-                </span>
-              </div>
+                className="absolute top-3 bottom-6 w-0 border-r-2 border-dashed border-sky-400 opacity-60 z-0"
+              />
 
               {/* Team 2 Win Threshold Line (Right) */}
               <div 
                 style={{ left: `calc(50% + ${maxDisplacementPx}px)` }}
-                className="absolute top-6 bottom-10 w-0 border-r-2 border-dashed border-rose-400 opacity-60 z-0"
-              >
-                <span className="absolute -top-5 -right-12 text-[11px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
-                  បន្ទាត់ឈ្នះ ក្រុម ២
-                </span>
-              </div>
+                className="absolute top-3 bottom-6 w-0 border-r-2 border-dashed border-rose-400 opacity-60 z-0"
+              />
 
-              {/* Ground Shadow Oval */}
-              <div className="absolute bottom-6 w-[85%] max-w-[650px] h-8 bg-slate-200/60 rounded-full blur-xs z-0" />
+              {/* Dynamic Directional Pull Chevrons on ground */}
+              <AnimatePresence>
+                {lastWinnerTeam === 'team1' && (
+                  <motion.div 
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: [0, 1, 0], x: [-10, -50] }}
+                    exit={{ opacity: 0 }}
+                    transition={{ repeat: Infinity, duration: 0.6 }}
+                    className="absolute bottom-7 left-[30%] flex items-center gap-1 text-sky-500 font-black text-sm z-0"
+                  >
+                    <span>«««</span>
+                    <span className="text-xs bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full font-bold">ទាញទៅឆ្វេង!</span>
+                  </motion.div>
+                )}
+                {lastWinnerTeam === 'team2' && (
+                  <motion.div 
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: [0, 1, 0], x: [10, 50] }}
+                    exit={{ opacity: 0 }}
+                    transition={{ repeat: Infinity, duration: 0.6 }}
+                    className="absolute bottom-7 right-[30%] flex items-center gap-1 text-rose-500 font-black text-sm z-0"
+                  >
+                    <span className="text-xs bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded-full font-bold">ទាញទៅស្តាំ!</span>
+                    <span>»»»</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
-            {/* Dynamic Tug of War Rig with smooth spring translation */}
+            {/* Match Point Alert Tension Badge */}
+            {Math.abs(pullBalance) >= targetWinPulls - 1 && !winner && (
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: [1, 1.05, 1], opacity: 1 }}
+                transition={{ repeat: Infinity, duration: 1 }}
+                className="absolute top-1 z-20 px-3 py-0.5 rounded-full bg-amber-500 text-white text-[11px] sm:text-xs font-black shadow-md flex items-center gap-1 border border-amber-300"
+              >
+                <Flame size={13} className="animate-bounce" />
+                <span>ស្វិតស្វាញណាស់! ជិតដល់បន្ទាត់ឈ្នះហើយ!</span>
+              </motion.div>
+            )}
+
+            {/* Dynamic Tug of War Rig with smooth spring score displacement */}
             <motion.div 
-              style={{ x: displacementPx }}
-              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              animate={{ x: displacementPx }}
+              transition={{ type: 'spring', stiffness: 280, damping: 24 }}
               className="relative z-10 flex items-center justify-center w-full max-w-[850px] px-2 select-none"
             >
-              {/* Student Tug of War Image */}
-              <img 
-                src="/images/images1.png" 
-                alt="សិស្សទាញព្រ័ត្រ (Student Tug of War)" 
-                className="w-full max-h-[250px] sm:max-h-[300px] md:max-h-[350px] object-contain drop-shadow-md select-none pointer-events-none"
-                draggable={false}
-              />
+              {/* Inner Continuous Tug of War Animation: Purely horizontal forward and backward tugging (ទៅមុខ មកក្រោយ ទៅមក ដដែលៗ គ្មានចលនាលើក្រោម) */}
+              <motion.div
+                animate={winner ? {
+                  x: 0,
+                  y: 0,
+                  rotate: 0,
+                  scale: 1
+                } : {
+                  // Strictly horizontal back-and-forth tugging motion (pull left, pull right)
+                  x: [-20, 20, -20],
+                  y: 0,
+                  rotate: 0,
+                  scale: 1
+                }}
+                transition={winner ? {
+                  duration: 0.3
+                } : {
+                  x: { repeat: Infinity, duration: 1.1, ease: "easeInOut" }
+                }}
+                className="relative w-full flex items-center justify-center"
+              >
+                {/* Student Tug of War Image */}
+                <img 
+                  src="/images/images1.png" 
+                  alt="សិស្សទាញព្រ័ត្រ (Student Tug of War)" 
+                  className={`w-full max-h-[160px] sm:max-h-[210px] md:max-h-[250px] object-contain select-none pointer-events-none transition-all duration-300 ${
+                    lastWinnerTeam ? 'drop-shadow-xl brightness-105' : 'drop-shadow-md'
+                  }`}
+                  draggable={false}
+                />
+
+                {/* Center Red Ribbon Knot on Rope */}
+                <div className="absolute left-1/2 top-[52%] -translate-x-1/2 -translate-y-1/2 pointer-events-none flex flex-col items-center z-20">
+                  {/* Fluttering Red Ribbon Cloth */}
+                  <motion.div 
+                    animate={{ 
+                      rotate: [-10, 10, -10],
+                      skewX: [-6, 6, -6]
+                    }}
+                    transition={{ repeat: Infinity, duration: 1.1, ease: "easeInOut" }}
+                    className="w-4 h-6 sm:w-5 sm:h-8 bg-gradient-to-b from-rose-500 to-red-600 rounded-b-md shadow-md border-t-2 border-amber-300 relative flex items-center justify-center"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-300 shadow-xs" />
+                  </motion.div>
+                  {/* Downward Indicator Arrow */}
+                  <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[6px] border-t-red-600 drop-shadow-xs -mt-0.5" />
+                </div>
+              </motion.div>
+
+              {/* Team 1 Strain / Dust Puffs & Muscle Sparks (Left) */}
+              <AnimatePresence>
+                {lastWinnerTeam === 'team1' && (
+                  <>
+                    {/* Floating Effort Badges over Team 1 */}
+                    <motion.div 
+                      initial={{ opacity: 0, y: 15, scale: 0.7 }}
+                      animate={{ opacity: 1, y: -25, scale: 1 }}
+                      exit={{ opacity: 0, y: -40 }}
+                      transition={{ duration: 0.65 }}
+                      className="absolute top-[8%] left-[20%] z-30 flex items-center gap-1 bg-sky-600 text-white text-xs sm:text-sm font-black px-2.5 py-1 rounded-full shadow-lg border-2 border-sky-300"
+                    >
+                      <Zap size={14} className="fill-amber-300 text-amber-300" />
+                      <span>កម្លាំងខ្លាំង! +1</span>
+                    </motion.div>
+
+                    {/* Cartoon Sweat / Strain drop */}
+                    <motion.span 
+                      initial={{ opacity: 0, scale: 0 }}
+                      animate={{ opacity: [0, 1, 0], y: [-5, -25], x: [-10, -20] }}
+                      transition={{ duration: 0.8 }}
+                      className="absolute top-[18%] left-[28%] text-lg sm:text-2xl z-30 select-none"
+                    >
+                      💦
+                    </motion.span>
+
+                    {/* Dust Puffs behind Team 1's feet */}
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.5, x: 10 }}
+                      animate={{ opacity: [0, 0.9, 0], scale: [0.6, 1.4, 1.8], x: [0, -35, -60], y: [0, -10, -18] }}
+                      transition={{ duration: 0.7 }}
+                      className="absolute bottom-[10%] left-[10%] text-xl sm:text-2xl z-20 pointer-events-none select-none"
+                    >
+                      💨
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+
+              {/* Team 2 Strain / Dust Puffs & Muscle Sparks (Right) */}
+              <AnimatePresence>
+                {lastWinnerTeam === 'team2' && (
+                  <>
+                    {/* Floating Effort Badges over Team 2 */}
+                    <motion.div 
+                      initial={{ opacity: 0, y: 15, scale: 0.7 }}
+                      animate={{ opacity: 1, y: -25, scale: 1 }}
+                      exit={{ opacity: 0, y: -40 }}
+                      transition={{ duration: 0.65 }}
+                      className="absolute top-[8%] right-[20%] z-30 flex items-center gap-1 bg-rose-600 text-white text-xs sm:text-sm font-black px-2.5 py-1 rounded-full shadow-lg border-2 border-rose-300"
+                    >
+                      <Zap size={14} className="fill-amber-300 text-amber-300" />
+                      <span>កម្លាំងខ្លាំង! +1</span>
+                    </motion.div>
+
+                    {/* Cartoon Sweat / Strain drop */}
+                    <motion.span 
+                      initial={{ opacity: 0, scale: 0 }}
+                      animate={{ opacity: [0, 1, 0], y: [-5, -25], x: [10, 20] }}
+                      transition={{ duration: 0.8 }}
+                      className="absolute top-[18%] right-[28%] text-lg sm:text-2xl z-30 select-none"
+                    >
+                      💦
+                    </motion.span>
+
+                    {/* Dust Puffs behind Team 2's feet */}
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.5, x: -10 }}
+                      animate={{ opacity: [0, 0.9, 0], scale: [0.6, 1.4, 1.8], x: [0, 35, 60], y: [0, -10, -18] }}
+                      transition={{ duration: 0.7 }}
+                      className="absolute bottom-[10%] right-[10%] text-xl sm:text-2xl z-20 pointer-events-none select-none"
+                    >
+                      💨
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+
+              {/* Winner Victory Aura & Golden Crown */}
+              <AnimatePresence>
+                {winner === 'team1' && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.5, y: 10 }}
+                    animate={{ opacity: 1, scale: [1, 1.1, 1], y: [-5, -15, -5] }}
+                    transition={{ repeat: Infinity, duration: 1.2 }}
+                    className="absolute -top-6 left-[18%] z-30 flex flex-col items-center pointer-events-none"
+                  >
+                    <Crown size={34} className="text-amber-400 fill-amber-400 drop-shadow-md" />
+                    <span className="bg-amber-400 text-amber-950 font-black text-[11px] sm:text-xs px-2 py-0.5 rounded-full shadow-md whitespace-nowrap">
+                      👑 ក្រុមទី ១ ឈ្នះ!
+                    </span>
+                  </motion.div>
+                )}
+                {winner === 'team2' && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.5, y: 10 }}
+                    animate={{ opacity: 1, scale: [1, 1.1, 1], y: [-5, -15, -5] }}
+                    transition={{ repeat: Infinity, duration: 1.2 }}
+                    className="absolute -top-6 right-[18%] z-30 flex flex-col items-center pointer-events-none"
+                  >
+                    <Crown size={34} className="text-amber-400 fill-amber-400 drop-shadow-md" />
+                    <span className="bg-amber-400 text-amber-950 font-black text-[11px] sm:text-xs px-2 py-0.5 rounded-full shadow-md whitespace-nowrap">
+                      👑 ក្រុមទី ២ ឈ្នះ!
+                    </span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           </div>
 
           {/* Arena Bottom: Position Progress Slider */}
-          <div className="pt-3 border-t border-slate-100 flex flex-col gap-1.5">
+          <div className="pt-2 border-t border-slate-100 flex flex-col gap-1">
             <div className="flex items-center justify-between text-xs font-bold">
-              <span className="text-sky-600">ក្រុមទី ១</span>
-              <span className="text-slate-400 font-mono">
+              <span className="text-sky-600 font-black">ក្រុមទី ១ (ឆ្វេង)</span>
+              <span className="text-slate-500 font-mono font-bold">
                 {pullBalance < 0 ? `← ទាញបាន ${Math.abs(pullBalance)} ជំហាន` : pullBalance > 0 ? `ទាញបាន ${pullBalance} ជំហាន →` : 'កណ្តាលស្មើគ្នា'}
               </span>
-              <span className="text-rose-600">ក្រុមទី ២</span>
+              <span className="text-rose-600 font-black">ក្រុមទី ២ (ស្តាំ)</span>
             </div>
 
             {/* Visual Balance Track */}
-            <div className="relative w-full h-3 bg-slate-200/90 rounded-full flex items-center px-1">
+            <div className="relative w-full h-2.5 bg-slate-200/90 rounded-full flex items-center px-1">
               {/* Center indicator line */}
               <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-slate-400 -translate-x-1/2" />
               
@@ -655,102 +817,230 @@ export default function MathTugOfWar({ onBack }: MathTugOfWarProps) {
               <motion.div 
                 style={{ left: `${50 + (pullBalance / targetWinPulls) * 46}%` }}
                 transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-                className="absolute w-5 h-5 bg-purple-600 border-2 border-white rounded-full shadow-md -translate-x-1/2 cursor-grab"
+                className="absolute w-4 h-4 bg-purple-600 border-2 border-white rounded-full shadow-md -translate-x-1/2"
               />
             </div>
           </div>
         </div>
 
 
-        {/* ================= RIGHT PANEL: ក្រុមទី ២ (Team 2 - Red Keypad) ================= */}
-        <div 
-          id="panel-team-2"
-          className="w-full lg:w-[300px] xl:w-[330px] bg-rose-50/70 border-2 border-rose-200/80 rounded-3xl p-4 sm:p-5 shadow-xs flex flex-col justify-between shrink-0 transition-all"
-        >
-          {/* Team 2 Header */}
-          <div className="bg-rose-600 text-white font-bold py-2.5 px-4 rounded-2xl flex items-center justify-between shadow-xs mb-3">
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-white animate-pulse" />
-              <span className="text-base sm:text-lg font-black tracking-wide">ក្រុមទី ២</span>
-            </div>
-            <div className="bg-white text-rose-700 font-black text-sm sm:text-base px-3 py-0.5 rounded-full shadow-inner">
-              {t2Score}
-            </div>
-          </div>
-
-          {/* Answer Display Box (ប្រអប់ចម្លើយ) */}
-          <motion.div 
-            animate={
-              t2Shake 
-                ? { x: [-10, 10, -8, 8, -4, 4, 0] } 
-                : t2SuccessFlash 
-                ? { scale: [1, 1.05, 1], backgroundColor: ['#ffffff', '#ffe4e6', '#ffffff'] }
-                : {}
-            }
-            className={`w-full min-h-[66px] bg-white border-2 rounded-2xl py-2 px-4 text-center flex items-center justify-center transition-colors shadow-xs ${
-              t2Shake 
-                ? 'border-rose-400 text-rose-600 bg-rose-50' 
-                : t2SuccessFlash
-                ? 'border-rose-500 ring-2 ring-rose-300'
-                : 'border-slate-200/90 text-slate-800'
-            }`}
+        {/* ================= BOTTOM: DUAL TEAM KEYPADS (2-ROW COMPACT LAYOUT) ================= */}
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 shrink-0">
+          
+          {/* ================= TEAM 1 PANEL (Left / Sky) ================= */}
+          <div 
+            id="panel-team-1"
+            className="bg-sky-50/80 border-2 border-sky-200/90 rounded-2xl sm:rounded-3xl p-2.5 sm:p-3.5 shadow-xs flex flex-col justify-between transition-all"
           >
-            {t2Input ? (
-              <span className="text-3xl sm:text-4xl font-black font-mono tracking-widest text-slate-800">
-                {t2Input}
-              </span>
-            ) : (
-              <span className="text-3xl sm:text-4xl font-black font-mono text-slate-300">
-                0
-              </span>
-            )}
-          </motion.div>
+            {/* Header Tag & Answer Display in 1 compact row */}
+            <div className="flex items-center gap-2 sm:gap-3 mb-2">
+              {/* Team 1 Badge */}
+              <div className="bg-sky-600 text-white font-bold py-1.5 px-3 sm:px-4 rounded-xl flex items-center gap-2 shadow-xs shrink-0">
+                <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
+                <span className="text-sm sm:text-base font-black tracking-wide whitespace-nowrap">ក្រុមទី ១</span>
+                <span className="bg-white text-sky-700 font-black text-xs sm:text-sm px-2.5 py-0.5 rounded-full shadow-inner ml-1">
+                  {t1Score}
+                </span>
+              </div>
 
-          {/* Numpad Keypad (3x4 Grid matching screenshot) */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-2.5 my-3">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => (
-              <button
-                key={`t2-${digit}`}
-                onClick={() => handleT2Key(digit.toString())}
-                className="bg-white hover:bg-slate-50 active:scale-95 text-slate-800 font-black text-2xl sm:text-3xl py-3.5 sm:py-4 rounded-2xl border border-slate-200/90 shadow-xs transition-all flex items-center justify-center cursor-pointer select-none"
+              {/* Answer Display Box (ប្រអប់ចម្លើយ) */}
+              <motion.div 
+                animate={
+                  t1Shake 
+                    ? { x: [-10, 10, -8, 8, -4, 4, 0] } 
+                    : t1SuccessFlash 
+                    ? { scale: [1, 1.05, 1], backgroundColor: ['#ffffff', '#e0f2fe', '#ffffff'] }
+                    : {}
+                }
+                className={`flex-1 min-h-[44px] sm:min-h-[48px] bg-white border-2 rounded-xl py-1 px-3 text-center flex items-center justify-center transition-colors shadow-xs ${
+                  t1Shake 
+                    ? 'border-rose-400 text-rose-600 bg-rose-50' 
+                    : t1SuccessFlash
+                    ? 'border-sky-500 ring-2 ring-sky-300'
+                    : 'border-slate-200/90 text-slate-800'
+                }`}
               >
-                {digit}
+                <span className={`text-2xl sm:text-3xl font-black font-mono tracking-widest ${t1Input ? 'text-slate-800' : 'text-slate-300'}`}>
+                  {t1Input || 0}
+                </span>
+              </motion.div>
+            </div>
+
+            {/* 2-Row Compact Keypad: 7 columns x 2 rows */}
+            {/* Row 1: 1, 2, 3, 4, 5, 6, ✕ (Clear All) */}
+            {/* Row 2: 7, 8, 9, 0, . (Dot), ⌫ (Backspace), ✓ (Submit) */}
+            <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+              {[1, 2, 3, 4, 5, 6].map((digit) => (
+                <button
+                  key={`t1-${digit}`}
+                  onClick={() => handleT1Key(digit.toString())}
+                  className="bg-white hover:bg-slate-50 active:scale-95 text-slate-800 font-black text-lg sm:text-xl py-2 sm:py-2.5 rounded-xl border border-slate-200/90 shadow-xs transition-all flex items-center justify-center cursor-pointer select-none"
+                >
+                  {digit}
+                </button>
+              ))}
+
+              {/* Clear Button (Red X) */}
+              <button
+                onClick={() => handleT1Key('C')}
+                className="bg-[#f43f5e] hover:bg-[#e11d48] active:scale-95 text-white font-black py-2 sm:py-2.5 rounded-xl shadow-xs transition-all flex items-center justify-center cursor-pointer select-none"
+                title="លុបទាំងអស់"
+              >
+                <X size={20} strokeWidth={3.5} />
               </button>
-            ))}
 
-            {/* Clear Button (Red X) */}
-            <button
-              onClick={() => handleT2Key('C')}
-              className="bg-[#f43f5e] hover:bg-[#e11d48] active:scale-95 text-white font-black py-3.5 sm:py-4 rounded-2xl shadow-xs transition-all flex items-center justify-center cursor-pointer select-none"
-              title="លុបចោល"
-            >
-              <X size={28} strokeWidth={3.5} />
-            </button>
+              {[7, 8, 9, 0].map((digit) => (
+                <button
+                  key={`t1-${digit}`}
+                  onClick={() => handleT1Key(digit.toString())}
+                  className="bg-white hover:bg-slate-50 active:scale-95 text-slate-800 font-black text-lg sm:text-xl py-2 sm:py-2.5 rounded-xl border border-slate-200/90 shadow-xs transition-all flex items-center justify-center cursor-pointer select-none"
+                >
+                  {digit}
+                </button>
+              ))}
 
-            {/* Zero Button */}
-            <button
-              onClick={() => handleT2Key('0')}
-              className="bg-white hover:bg-slate-50 active:scale-95 text-slate-800 font-black text-2xl sm:text-3xl py-3.5 sm:py-4 rounded-2xl border border-slate-200/90 shadow-xs transition-all flex items-center justify-center cursor-pointer select-none"
-            >
-              0
-            </button>
+              {/* Decimal Dot Button (.) */}
+              <button
+                onClick={() => handleT1Key('.')}
+                className="bg-white hover:bg-sky-50 active:scale-95 text-sky-700 font-black text-2xl sm:text-3xl py-2 sm:py-2.5 rounded-xl border border-sky-200/90 shadow-xs transition-all flex items-center justify-center cursor-pointer select-none leading-none pb-1"
+                title="ចុចទសភាគ"
+              >
+                .
+              </button>
 
-            {/* Submit Button (Vibrant Blue Checkmark matching screenshot) */}
-            <button
-              onClick={() => handleT2Key('submit')}
-              className="bg-[#0080dd] hover:bg-blue-600 active:scale-95 text-white font-black py-3.5 sm:py-4 rounded-2xl shadow-xs transition-all flex items-center justify-center cursor-pointer select-none"
-              title="ផ្ទៀងផ្ទាត់ចម្លើយ"
-            >
-              <Check size={28} strokeWidth={3.5} />
-            </button>
+              {/* Backspace Button (Delete 1 char) */}
+              <button
+                onClick={() => handleT1Key('backspace')}
+                className="bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-black py-2 sm:py-2.5 rounded-xl border border-slate-200 shadow-xs transition-all flex items-center justify-center cursor-pointer select-none"
+                title="លុបថយក្រោយ ១ ខ្ទង់"
+              >
+                <Delete size={18} strokeWidth={2.5} />
+              </button>
+
+              {/* Submit Button (Vibrant Blue Checkmark) */}
+              <button
+                onClick={() => handleT1Key('submit')}
+                className="bg-[#0080dd] hover:bg-blue-600 active:scale-95 text-white font-black py-2 sm:py-2.5 rounded-xl shadow-xs transition-all flex items-center justify-center cursor-pointer select-none"
+                title="ផ្ទៀងផ្ទាត់ចម្លើយ"
+              >
+                <Check size={20} strokeWidth={3.5} />
+              </button>
+            </div>
+
+            {/* Bottom Team Hint */}
+            <div className="text-center text-[10px] sm:text-xs font-semibold text-slate-400 pt-1.5">
+              ក្រុមទី ១៖ ចុចប៊ូតុង ឬ keyboard (1-9, 0, ., Enter)
+            </div>
           </div>
 
-          {/* Bottom Team Hint */}
-          <div className="text-center text-xs font-semibold text-slate-400 pt-1">
-            ក្រុមទី ២៖ ចុចប៊ូតុងលើអេក្រង់ ឬ Numpad Keyboard
+
+          {/* ================= TEAM 2 PANEL (Right / Rose) ================= */}
+          <div 
+            id="panel-team-2"
+            className="bg-rose-50/80 border-2 border-rose-200/90 rounded-2xl sm:rounded-3xl p-2.5 sm:p-3.5 shadow-xs flex flex-col justify-between transition-all"
+          >
+            {/* Header Tag & Answer Display in 1 compact row */}
+            <div className="flex items-center gap-2 sm:gap-3 mb-2">
+              {/* Team 2 Badge */}
+              <div className="bg-rose-600 text-white font-bold py-1.5 px-3 sm:px-4 rounded-xl flex items-center gap-2 shadow-xs shrink-0">
+                <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
+                <span className="text-sm sm:text-base font-black tracking-wide whitespace-nowrap">ក្រុមទី ២</span>
+                <span className="bg-white text-rose-700 font-black text-xs sm:text-sm px-2.5 py-0.5 rounded-full shadow-inner ml-1">
+                  {t2Score}
+                </span>
+              </div>
+
+              {/* Answer Display Box (ប្រអប់ចម្លើយ) */}
+              <motion.div 
+                animate={
+                  t2Shake 
+                    ? { x: [-10, 10, -8, 8, -4, 4, 0] } 
+                    : t2SuccessFlash 
+                    ? { scale: [1, 1.05, 1], backgroundColor: ['#ffffff', '#ffe4e6', '#ffffff'] }
+                    : {}
+                }
+                className={`flex-1 min-h-[44px] sm:min-h-[48px] bg-white border-2 rounded-xl py-1 px-3 text-center flex items-center justify-center transition-colors shadow-xs ${
+                  t2Shake 
+                    ? 'border-rose-400 text-rose-600 bg-rose-50' 
+                    : t2SuccessFlash
+                    ? 'border-rose-500 ring-2 ring-rose-300'
+                    : 'border-slate-200/90 text-slate-800'
+                }`}
+              >
+                <span className={`text-2xl sm:text-3xl font-black font-mono tracking-widest ${t2Input ? 'text-slate-800' : 'text-slate-300'}`}>
+                  {t2Input || 0}
+                </span>
+              </motion.div>
+            </div>
+
+            {/* 2-Row Compact Keypad: 7 columns x 2 rows */}
+            {/* Row 1: 1, 2, 3, 4, 5, 6, ✕ (Clear All) */}
+            {/* Row 2: 7, 8, 9, 0, . (Dot), ⌫ (Backspace), ✓ (Submit) */}
+            <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+              {[1, 2, 3, 4, 5, 6].map((digit) => (
+                <button
+                  key={`t2-${digit}`}
+                  onClick={() => handleT2Key(digit.toString())}
+                  className="bg-white hover:bg-slate-50 active:scale-95 text-slate-800 font-black text-lg sm:text-xl py-2 sm:py-2.5 rounded-xl border border-slate-200/90 shadow-xs transition-all flex items-center justify-center cursor-pointer select-none"
+                >
+                  {digit}
+                </button>
+              ))}
+
+              {/* Clear Button (Red X) */}
+              <button
+                onClick={() => handleT2Key('C')}
+                className="bg-[#f43f5e] hover:bg-[#e11d48] active:scale-95 text-white font-black py-2 sm:py-2.5 rounded-xl shadow-xs transition-all flex items-center justify-center cursor-pointer select-none"
+                title="លុបទាំងអស់"
+              >
+                <X size={20} strokeWidth={3.5} />
+              </button>
+
+              {[7, 8, 9, 0].map((digit) => (
+                <button
+                  key={`t2-${digit}`}
+                  onClick={() => handleT2Key(digit.toString())}
+                  className="bg-white hover:bg-slate-50 active:scale-95 text-slate-800 font-black text-lg sm:text-xl py-2 sm:py-2.5 rounded-xl border border-slate-200/90 shadow-xs transition-all flex items-center justify-center cursor-pointer select-none"
+                >
+                  {digit}
+                </button>
+              ))}
+
+              {/* Decimal Dot Button (.) */}
+              <button
+                onClick={() => handleT2Key('.')}
+                className="bg-white hover:bg-rose-50 active:scale-95 text-rose-700 font-black text-2xl sm:text-3xl py-2 sm:py-2.5 rounded-xl border border-rose-200/90 shadow-xs transition-all flex items-center justify-center cursor-pointer select-none leading-none pb-1"
+                title="ចុចទសភាគ"
+              >
+                .
+              </button>
+
+              {/* Backspace Button (Delete 1 char) */}
+              <button
+                onClick={() => handleT2Key('backspace')}
+                className="bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-black py-2 sm:py-2.5 rounded-xl border border-slate-200 shadow-xs transition-all flex items-center justify-center cursor-pointer select-none"
+                title="លុបថយក្រោយ ១ ខ្ទង់"
+              >
+                <Delete size={18} strokeWidth={2.5} />
+              </button>
+
+              {/* Submit Button (Vibrant Blue Checkmark) */}
+              <button
+                onClick={() => handleT2Key('submit')}
+                className="bg-[#0080dd] hover:bg-blue-600 active:scale-95 text-white font-black py-2 sm:py-2.5 rounded-xl shadow-xs transition-all flex items-center justify-center cursor-pointer select-none"
+                title="ផ្ទៀងផ្ទាត់ចម្លើយ"
+              >
+                <Check size={20} strokeWidth={3.5} />
+              </button>
+            </div>
+
+            {/* Bottom Team Hint */}
+            <div className="text-center text-[10px] sm:text-xs font-semibold text-slate-400 pt-1.5">
+              ក្រុមទី ២៖ ចុចប៊ូតុង ឬ keyboard (Numpad)
+            </div>
           </div>
+
         </div>
-
       </main>
 
 
@@ -796,6 +1086,7 @@ export default function MathTugOfWar({ onBack }: MathTugOfWarProps) {
                       { id: 'add', label: 'បូក (+)' },
                       { id: 'sub', label: 'ដក (-)' },
                       { id: 'div', label: 'ចែក (÷)' },
+                      { id: 'decimal', label: 'ទសភាគ (.)' },
                       { id: 'mixed', label: 'លាយបញ្ចូលគ្នា' }
                     ].map(item => (
                       <button
