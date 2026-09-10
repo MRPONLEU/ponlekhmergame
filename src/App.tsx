@@ -258,6 +258,9 @@ export default function App() {
         return (
           <MathTugOfWar 
             onBack={() => handleNavigate('dashboard')} 
+            topics={topics}
+            activeTopicId={activeTopicId}
+            onSelectTopic={handleSelectTopic}
           />
         );
       default:
