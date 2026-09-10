@@ -23,6 +23,7 @@ import {
   FileQuestion
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import * as XLSX from 'xlsx';
 import confetti from 'canvas-confetti';
 import { playSuccessSound, playFailSound, playClickSound, playWinSound, playTickSound } from '../utils/audio';
 import { Topic, QuizQuestion } from '../types';
@@ -33,6 +34,8 @@ interface MathTugOfWarProps {
   topics?: Topic[];
   activeTopicId?: string;
   onSelectTopic?: (id: string) => void;
+  onAddTopic?: (topic: Topic) => void;
+  onUpdateTopic?: (topic: Topic) => void;
 }
 
 export type GameMode = 'math' | 'quiz';
@@ -48,13 +51,14 @@ interface MathQuestion {
   text: string;
 }
 
-export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTopicId, onSelectTopic }: MathTugOfWarProps) {
+export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTopicId, onSelectTopic, onAddTopic, onUpdateTopic }: MathTugOfWarProps) {
   // Mode selection: 'math' (លេខ) or 'quiz' (សំណួរពហុជម្រើស ក ខ គ ឃ)
   const [gameMode, setGameMode] = useState<GameMode>('quiz');
 
   // Topic selection for Quiz mode (pulled from pre-existing topics)
   const [selectedTopicId, setSelectedTopicId] = useState<string>(activeTopicId || topics[0]?.id || DEFAULT_TOPICS[0].id);
   const [isTopicModalOpen, setIsTopicModalOpen] = useState<boolean>(false);
+  const [isTopicDropdownOpen, setIsTopicDropdownOpen] = useState<boolean>(false);
 
   // Derive current topic & questions
   const currentTopic = useMemo(() => {
@@ -605,6 +609,78 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
   const maxDisplacementPx = 160;
   const displacementPx = (pullBalance / targetWinPulls) * maxDisplacementPx;
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
+        
+        // Assume row 0 is header.
+        // Columns: Question, Option 1, Option 2, Option 3, Option 4, Answer Index (1-4)
+        const newQuestions: QuizQuestion[] = [];
+        for (let i = 1; i < data.length; i++) {
+          const row = data[i] as any[];
+          if (!row || row.length === 0) continue;
+          
+          const question = row[0]?.toString() || '';
+          if (!question) continue;
+          
+          const opt1 = row[1]?.toString() || '';
+          const opt2 = row[2]?.toString() || '';
+          const opt3 = row[3]?.toString() || '';
+          const opt4 = row[4]?.toString() || '';
+          
+          const options = [opt1, opt2, opt3, opt4].filter(Boolean);
+          if (options.length < 2) continue;
+          
+          let answerIndex = parseInt(row[5]?.toString()) - 1;
+          if (isNaN(answerIndex) || answerIndex < 0 || answerIndex >= options.length) {
+            answerIndex = 0;
+          }
+          
+          newQuestions.push({
+            question,
+            options,
+            answerIndex,
+            explanation: row[6]?.toString() || ''
+          });
+        }
+        
+        if (newQuestions.length > 0) {
+          const newTopic: Topic = {
+            id: Date.now().toString(),
+            name: file.name.replace(/\.[^/.]+$/, ""),
+            difficultWords: [],
+            shortPassages: [],
+            quizQuestions: newQuestions,
+            createdAt: Date.now()
+          };
+          onAddTopic?.(newTopic);
+          setSelectedTopicId(newTopic.id);
+          setIsTopicDropdownOpen(false);
+          alert(`នាំចូលបាន ${newQuestions.length} សំណួរដោយជោគជ័យ!`);
+          if (soundEnabled) playSuccessSound();
+        } else {
+          alert("មិនមានសំណួរត្រឹមត្រូវក្នុងឯកសារនេះទេ! សូមពិនិត្យទម្រង់ Excel។ (សំណួរ, ជម្រើស១-៤, លេខរៀងចម្លើយត្រូវ ១-៤)");
+        }
+      } catch (error) {
+        console.error(error);
+        alert("មានបញ្ហាក្នុងការអានឯកសារ Excel!");
+      }
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+    reader.readAsBinaryString(file);
+  };
+
   return (
     <div 
       id="math-tug-of-war-container"
@@ -631,161 +707,49 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
               <Home size={17} className="text-amber-600" />
               <span className="hidden sm:inline">ដើម</span>
             </button>
+          </div>
 
+          {/* Center Title */}
+          <div className="flex flex-col items-center gap-0.5 text-center">
+            <h1 className="text-lg sm:text-xl md:text-2xl font-black text-indigo-900 tracking-tight flex items-center justify-center gap-2">
+              <span>{gameMode === 'quiz' ? `ទាញព្រ័ត្រ ៖ ${currentTopic?.name || 'សំណួរពហុជម្រើស'}` : 'ទាញព្រ័ត្រ គណិតវិទ្យា'}</span>
+            </h1>
+            <span className="text-[11px] font-bold text-slate-500 hidden sm:inline">
+              {gameMode === 'quiz' 
+                ? `សំណួរពហុជម្រើស (${availableQuizQuestions.length} សំណួរ)` 
+                : `ប្រមាណវិធី ${operation === 'mul' ? 'គុណ (×)' : operation === 'add' ? 'បូក (+)' : operation === 'sub' ? 'ដក (-)' : operation === 'div' ? 'ចែក (÷)' : operation === 'decimal' ? 'ទសភាគ' : 'ចម្រុះ'}`
+              }
+            </span>
+          </div>
+
+          {/* Right Toolbar - Settings button */}
+          <div className="flex items-center gap-2">
             <button
               onClick={() => {
                 if (soundEnabled) playClickSound();
                 setIsSettingsOpen(true);
               }}
               id="btn-tug-settings"
-              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200/80 active:scale-95 text-slate-700 font-bold rounded-full text-sm transition-all shadow-xs cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-indigo-50 hover:bg-indigo-100 active:scale-95 text-indigo-700 font-black rounded-full text-sm transition-all border border-indigo-200 shadow-xs cursor-pointer"
               title="ការកំណត់ល្បែង"
             >
-              <Settings size={17} className="text-indigo-600" />
-              <span className="hidden sm:inline">ការកំណត់</span>
+              <Settings size={18} className="text-indigo-600" />
+              <span>ការកំណត់</span>
             </button>
-          </div>
-
-          {/* Center Title & Game Mode Switcher */}
-          <div className="flex flex-col items-center gap-1">
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg sm:text-xl md:text-2xl font-black text-indigo-900 tracking-tight flex items-center justify-center gap-2">
-                <span>{gameMode === 'quiz' ? 'ទាញព្រ័ត្រ ៖ សំណួរពហុជម្រើស' : 'ទាញព្រ័ត្រ គណិតវិទ្យា'}</span>
-              </h1>
-            </div>
-
-            {/* Game Mode Pill Selector (លេខ vs ពហុជម្រើស) & Topic Button */}
-            <div className="flex items-center gap-1.5 flex-wrap justify-center">
-              <div className="bg-slate-100 p-1 rounded-full flex items-center border border-slate-200/90 shadow-2xs">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (gameMode !== 'math') {
-                      if (soundEnabled) playClickSound();
-                      setGameMode('math');
-                      resetGame();
-                    }
-                  }}
-                  className={`px-3 py-1 rounded-full text-xs font-black transition-all flex items-center gap-1 cursor-pointer ${
-                    gameMode === 'math' 
-                      ? 'bg-indigo-600 text-white shadow-xs' 
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                  }`}
-                >
-                  <span>🧮</span>
-                  <span>លេងលេខ</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (gameMode !== 'quiz') {
-                      if (soundEnabled) playClickSound();
-                      setGameMode('quiz');
-                      resetGame();
-                    }
-                  }}
-                  className={`px-3 py-1 rounded-full text-xs font-black transition-all flex items-center gap-1 cursor-pointer ${
-                    gameMode === 'quiz' 
-                      ? 'bg-indigo-600 text-white shadow-xs' 
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                  }`}
-                >
-                  <span>❓</span>
-                  <span>សំណួរពហុជម្រើស</span>
-                </button>
-              </div>
-
-              {/* In Quiz mode, show active topic picker pill */}
-              {gameMode === 'quiz' && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (soundEnabled) playClickSound();
-                    setIsTopicModalOpen(true);
-                  }}
-                  className="px-3 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-300 active:scale-95 text-amber-900 rounded-full text-xs font-black flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
-                  title="ប្តូរប្រធានបទសំណួរ"
-                >
-                  <BookOpen size={13} className="text-amber-600" />
-                  <span className="max-w-[140px] sm:max-w-[200px] truncate">{currentTopic.name}</span>
-                  <span className="bg-amber-200/80 text-amber-950 px-1.5 py-0.2 rounded-full text-[10px]">
-                    {availableQuizQuestions.length} សំណួរ
-                  </span>
-                  <ChevronDown size={13} className="text-amber-700" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Right Toolbar */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                setSoundEnabled(!soundEnabled);
-                playClickSound();
-              }}
-              id="btn-tug-sound"
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200/80 active:scale-95 text-slate-700 font-bold rounded-full text-sm transition-all shadow-xs cursor-pointer"
-              title={soundEnabled ? "បិទសំឡេង" : "បើកសំឡេង"}
-            >
-              {soundEnabled ? <Volume2 size={17} className="text-emerald-600" /> : <VolumeX size={17} className="text-rose-500" />}
-              <span className="hidden md:inline">{soundEnabled ? 'សំឡេង' : 'បិទ'}</span>
-            </button>
-
-            <button
-              onClick={toggleExpandedFullscreen}
-              id="btn-tug-fullscreen"
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200/80 active:scale-95 text-slate-700 font-bold rounded-full text-sm transition-all shadow-xs cursor-pointer"
-              title="ពង្រីកពេញអេក្រង់ (បិទ Nav)"
-            >
-              <Maximize size={17} />
-              <span className="hidden md:inline">ពេញអេក្រង់</span>
-            </button>
-
-            {/* Language pill toggle */}
-            <div className="bg-slate-100 p-0.5 rounded-full flex items-center border border-slate-200">
-              <button
-                onClick={() => {
-                  setLang('kh');
-                  if (soundEnabled) playClickSound();
-                }}
-                className={`px-2 py-0.5 text-xs font-black rounded-full transition-all cursor-pointer ${
-                  lang === 'kh' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                KH ខ្មែរ
-              </button>
-              <button
-                onClick={() => {
-                  setLang('en');
-                  if (soundEnabled) playClickSound();
-                }}
-                className={`px-2 py-0.5 text-xs font-black rounded-full transition-all cursor-pointer ${
-                  lang === 'en' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                GB English
-              </button>
-            </div>
           </div>
         </header>
       )}
 
       {/* 2. Main Arena & Dual Panels Layout: Top = Tug of War Arena, Bottom = 2-Row Keypads */}
-      <main className={`flex-1 w-full mx-auto flex flex-col justify-between relative overflow-hidden transition-all ${
-        isExpandedFullscreen 
-          ? 'max-w-none p-0 gap-2 h-full' 
-          : 'max-w-[1500px] p-2 sm:p-4 gap-3 sm:gap-4'
-      }`}>
+      <main className={`flex-1 w-full mx-auto flex flex-col justify-between relative overflow-hidden transition-all max-w-[1500px] p-0 gap-0 sm:gap-0`}>
         
         {/* ================= TOP: TUG-OF-WAR ARENA (Full Width) ================= */}
         <div 
           id="arena-tug-field"
-          className={`bg-white border-2 border-slate-200/90 rounded-2xl sm:rounded-3xl shadow-xs flex flex-col justify-between overflow-hidden relative transition-all ${
+          className={`bg-white border-none rounded-none shadow-none flex flex-col justify-between overflow-hidden relative transition-all ${
             isExpandedFullscreen
-              ? 'flex-1 min-h-[350px] p-2.5 sm:p-4'
-              : 'flex-1 min-h-[280px] sm:min-h-[340px] p-3 sm:p-5'
+              ? 'flex-1 min-h-[350px] p-0'
+              : 'flex-1 min-h-[280px] sm:min-h-[340px] p-0'
           }`}
         >
           {/* Dedicated Full Screen Button (Icon full Screen ដាច់ដោយឡែក) */}
@@ -808,7 +772,7 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
               type="button"
               onClick={toggleExpandedFullscreen}
               id="btn-tug-dedicated-fullscreen"
-              className={`px-2.5 py-1.5 sm:px-3 sm:py-2 active:scale-95 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 backdrop-blur-xs shadow-xs hover:shadow-md ${
+              className={`w-9 h-9 sm:w-10 sm:h-10 active:scale-95 rounded-xl border transition-all cursor-pointer flex items-center justify-center backdrop-blur-xs shadow-xs hover:shadow-md ${
                 isExpandedFullscreen
                   ? 'bg-indigo-600 text-white border-indigo-700 hover:bg-indigo-700 ring-2 ring-indigo-200'
                   : 'bg-white/95 hover:bg-white text-slate-700 hover:text-indigo-600 border-slate-200/90'
@@ -816,20 +780,14 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
               title={isExpandedFullscreen ? "បង្រួមអេក្រង់ / បង្ហាញ Nav ឡើងវិញ (Esc)" : "ពង្រីកពេញអេក្រង់ (បិទ Nav)"}
             >
               {isExpandedFullscreen ? (
-                <>
-                  <Minimize size={17} strokeWidth={2.5} className="text-white" />
-                  <span className="text-xs font-black hidden sm:inline">បង្រួម (Nav)</span>
-                </>
+                <Minimize size={18} strokeWidth={2.5} className="text-white" />
               ) : (
-                <>
-                  <Maximize size={17} strokeWidth={2.5} className="text-indigo-600" />
-                  <span className="text-xs font-black hidden sm:inline">ពេញអេក្រង់</span>
-                </>
+                <Maximize size={18} strokeWidth={2.5} className="text-indigo-600" />
               )}
             </button>
           </div>
           {/* Arena Top: Central Big Exercise Card */}
-          <div className="flex items-center justify-center pb-2 border-b border-slate-100">
+          <div className="flex items-center justify-center pb-2 pt-2 sm:pt-4 px-2 sm:px-4 border-b border-slate-100 z-10 relative bg-white/50 backdrop-blur-sm">
             {/* Central Big Exercise Card (ផ្ទាំងលំហាត់ ឬ សំណួរពហុជម្រើស) */}
             <motion.div 
               key={gameMode === 'math' ? (currentQuestion ? currentQuestion.text : 'empty') : (currentQuizQuestion ? `quiz-${currentQuizIndex}` : 'empty-quiz')}
@@ -844,21 +802,6 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
                   : 'border-indigo-200'
               }`}
             >
-              {/* Small indicator badge */}
-              <div className="flex items-center justify-center gap-2 mb-1">
-                {gameMode === 'math' ? (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-[11px] sm:text-xs font-black">
-                    <Sparkles size={13} className="text-indigo-600" />
-                    <span>លំហាត់គណិតវិទ្យាប្រកួតរួម</span>
-                  </div>
-                ) : (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-[11px] sm:text-xs font-black">
-                    <HelpCircle size={13} className="text-indigo-600" />
-                    <span>សំណួរទី {availableQuizQuestions.length > 0 ? currentQuizIndex + 1 : 0} នៃ {availableQuizQuestions.length} • {currentTopic.name}</span>
-                  </div>
-                )}
-              </div>
-
               {/* Math vs Quiz Question Body */}
               {gameMode === 'math' ? (
                 /* Big Question Formula */
@@ -910,22 +853,28 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
           </div>
 
           {/* Tug of War Interactive Stage */}
-          <div className="flex-1 flex items-center justify-center my-2 sm:my-3 relative min-h-[170px] sm:min-h-[220px] md:min-h-[260px] overflow-hidden">
+          <div className="flex-1 flex items-center justify-center relative min-h-[170px] sm:min-h-[220px] md:min-h-[260px] overflow-hidden">
+            {/* Custom Background Image */}
+            <div 
+              className="absolute inset-0 z-0 bg-cover bg-bottom bg-no-repeat pointer-events-none" 
+              style={{ backgroundImage: "url('/images/background2.png')" }} 
+            />
+
             {/* Background Lines & Markers */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
               {/* Neutral Center Dotted Line */}
-              <div className="absolute top-2 bottom-4 w-0 border-r-2 border-dotted border-slate-300/80 left-1/2 -translate-x-1/2 z-0" />
+              <div className="absolute top-2 bottom-4 w-0 border-r-2 border-dotted border-slate-400 left-1/2 -translate-x-1/2" />
               
               {/* Team 1 Win Threshold Line (Left) */}
               <div 
                 style={{ left: `calc(50% - ${maxDisplacementPx}px)` }}
-                className="absolute top-3 bottom-6 w-0 border-r-2 border-dashed border-sky-400 opacity-60 z-0"
+                className="absolute top-3 bottom-6 w-0 border-r-2 border-dashed border-sky-500 opacity-60"
               />
 
               {/* Team 2 Win Threshold Line (Right) */}
               <div 
                 style={{ left: `calc(50% + ${maxDisplacementPx}px)` }}
-                className="absolute top-3 bottom-6 w-0 border-r-2 border-dashed border-rose-400 opacity-60 z-0"
+                className="absolute top-3 bottom-6 w-0 border-r-2 border-dashed border-rose-500 opacity-60"
               />
 
               {/* Dynamic Directional Pull Chevrons on ground */}
@@ -1133,36 +1082,36 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
                 )}
               </AnimatePresence>
             </motion.div>
-          </div>
+            
+            {/* Arena Bottom: Position Progress Slider (Moved inside Arena) */}
+            <div className="absolute bottom-2 left-4 right-4 z-40 flex flex-col gap-1">
+              <div className="flex items-center justify-between text-xs font-bold px-1">
+                <span className="text-sky-700 font-black drop-shadow-md bg-white/40 px-2 py-0.5 rounded-full">ក្រុមទី ១ (ឆ្វេង)</span>
+                <span className="text-slate-800 font-mono font-bold drop-shadow-md bg-white/40 px-2 py-0.5 rounded-full">
+                  {pullBalance < 0 ? `← ទាញបាន ${Math.abs(pullBalance)} ជំហាន` : pullBalance > 0 ? `ទាញបាន ${pullBalance} ជំហាន →` : 'កណ្តាលស្មើគ្នា'}
+                </span>
+                <span className="text-rose-700 font-black drop-shadow-md bg-white/40 px-2 py-0.5 rounded-full">ក្រុមទី ២ (ស្តាំ)</span>
+              </div>
 
-          {/* Arena Bottom: Position Progress Slider */}
-          <div className="pt-2 border-t border-slate-100 flex flex-col gap-1">
-            <div className="flex items-center justify-between text-xs font-bold">
-              <span className="text-sky-600 font-black">ក្រុមទី ១ (ឆ្វេង)</span>
-              <span className="text-slate-500 font-mono font-bold">
-                {pullBalance < 0 ? `← ទាញបាន ${Math.abs(pullBalance)} ជំហាន` : pullBalance > 0 ? `ទាញបាន ${pullBalance} ជំហាន →` : 'កណ្តាលស្មើគ្នា'}
-              </span>
-              <span className="text-rose-600 font-black">ក្រុមទី ២ (ស្តាំ)</span>
-            </div>
-
-            {/* Visual Balance Track */}
-            <div className="relative w-full h-2.5 bg-slate-200/90 rounded-full flex items-center px-1">
-              {/* Center indicator line */}
-              <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-slate-400 -translate-x-1/2" />
-              
-              {/* Moving Purple Bead */}
-              <motion.div 
-                style={{ left: `${50 + (pullBalance / targetWinPulls) * 46}%` }}
-                transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-                className="absolute w-4 h-4 bg-purple-600 border-2 border-white rounded-full shadow-md -translate-x-1/2"
-              />
+              {/* Visual Balance Track */}
+              <div className="relative w-full h-2.5 bg-white/80 rounded-full flex items-center px-1 shadow-md border border-slate-300">
+                {/* Center indicator line */}
+                <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-slate-500 -translate-x-1/2" />
+                
+                {/* Moving Purple Bead */}
+                <motion.div 
+                  style={{ left: `${50 + (pullBalance / targetWinPulls) * 46}%` }}
+                  transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+                  className="absolute w-4 h-4 bg-purple-600 border-2 border-white rounded-full shadow-md -translate-x-1/2"
+                />
+              </div>
             </div>
           </div>
         </div>
 
 
         {/* ================= BOTTOM: DUAL TEAM KEYPADS / QUIZ BUTTONS ================= */}
-        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 shrink-0">
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 shrink-0 px-2 sm:px-4 pb-2 sm:pb-4 mt-2 sm:mt-3">
           
           {/* ================= TEAM 1 PANEL (Left / Sky) ================= */}
           <div 
@@ -1551,65 +1500,197 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
                 </button>
               </div>
 
-              <div className="py-4 space-y-4">
-                {/* Math Operations Selection */}
+              <div className="py-4 space-y-4 max-h-[75vh] overflow-y-auto pr-1">
+                {/* 1. Game Mode Selection (របៀបលេង) */}
                 <div>
                   <label className="block text-xs font-black text-slate-600 uppercase tracking-wider mb-2">
-                    ប្រមាណវិធីគណិតវិទ្យា
+                    របៀបលេង (Game Mode)
                   </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { id: 'mul', label: 'គុណ (×)' },
-                      { id: 'add', label: 'បូក (+)' },
-                      { id: 'sub', label: 'ដក (-)' },
-                      { id: 'div', label: 'ចែក (÷)' },
-                      { id: 'decimal', label: 'ទសភាគ (.)' },
-                      { id: 'mixed', label: 'លាយបញ្ចូលគ្នា' }
-                    ].map(item => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => setOperation(item.id as MathOperation)}
-                        className={`py-2 px-3 rounded-xl font-extrabold text-sm border transition-all cursor-pointer ${
-                          operation === item.id 
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs' 
-                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                        }`}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setGameMode('math');
+                        if (soundEnabled) playClickSound();
+                      }}
+                      className={`py-2.5 px-3 rounded-xl font-black text-xs sm:text-sm border transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                        gameMode === 'math'
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs ring-2 ring-indigo-200'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      <span className="text-base">🧮</span>
+                      <span>លេងលេខ (គណិតវិទ្យា)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setGameMode('quiz');
+                        if (soundEnabled) playClickSound();
+                      }}
+                      className={`py-2.5 px-3 rounded-xl font-black text-xs sm:text-sm border transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                        gameMode === 'quiz'
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs ring-2 ring-indigo-200'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      <span className="text-base">❓</span>
+                      <span>សំណួរពហុជម្រើស</span>
+                    </button>
                   </div>
                 </div>
 
-                {/* Difficulty Levels */}
-                <div>
-                  <label className="block text-xs font-black text-slate-600 uppercase tracking-wider mb-2">
-                    កម្រិតលំបាក
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { id: 'easy', label: 'ងាយស្រួល (១-១០)' },
-                      { id: 'medium', label: 'មធ្យម (២-២៥)' },
-                      { id: 'hard', label: 'លំបាក (២-១០០)' }
-                    ].map(lvl => (
-                      <button
-                        key={lvl.id}
-                        type="button"
-                        onClick={() => setDifficulty(lvl.id as DifficultyLevel)}
-                        className={`py-2 px-2.5 rounded-xl font-extrabold text-xs sm:text-sm border transition-all cursor-pointer ${
-                          difficulty === lvl.id 
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs' 
-                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                        }`}
-                      >
-                        {lvl.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                {/* 2. If Quiz Mode: Topic Selection */}
+                {gameMode === 'quiz' && (
+                  <div className="bg-amber-50/70 p-3.5 rounded-2xl border border-amber-200 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-black text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
+                        <BookOpen size={14} className="text-amber-700" />
+                        <span>ប្រធានបទសំណួរ (Quiz Topic)</span>
+                      </label>
+                      <div>
+                        <input
+                          type="file"
+                          accept=".xlsx,.xls,.csv"
+                          ref={fileInputRef}
+                          className="hidden"
+                          onChange={handleExcelUpload}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (soundEnabled) playClickSound();
+                            fileInputRef.current?.click();
+                          }}
+                          className="text-xs font-black text-indigo-600 hover:text-indigo-800 underline cursor-pointer flex items-center gap-1"
+                          title="Excel Format: ជួរទី១: សំណួរ, ទី២-៥: ជម្រើស, ទី៦: លេខចម្លើយត្រូវ(១-៤)"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                          នាំចូល Excel
+                        </button>
+                      </div>
+                    </div>
 
-                {/* Target Win Pulls ahead */}
+                    <div className="flex flex-col gap-1.5">
+                      {!isTopicDropdownOpen ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsTopicDropdownOpen(true);
+                            if (soundEnabled) playClickSound();
+                          }}
+                          className="p-2.5 rounded-xl text-left font-bold text-xs sm:text-sm border transition-all flex items-center justify-between cursor-pointer bg-white text-amber-950 border-amber-400 shadow-xs ring-2 ring-amber-300"
+                        >
+                          <div className="flex items-center justify-between flex-1 pr-2 border-r border-amber-200 mr-2">
+                             <span className="truncate">{currentTopic.name}</span>
+                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 shrink-0 ml-2">
+                               {currentTopic.quizQuestions.length} សំណួរ
+                             </span>
+                          </div>
+                          <ChevronDown size={18} className="text-amber-700 shrink-0" />
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsTopicDropdownOpen(false);
+                              if (soundEnabled) playClickSound();
+                            }}
+                            className="w-full flex items-center justify-center p-1.5 mb-1 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-lg transition-colors"
+                          >
+                            <ChevronDown size={16} className="rotate-180" />
+                          </button>
+                          {topics.map((topic) => (
+                            <button
+                              key={topic.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedTopicId(topic.id);
+                                setIsTopicDropdownOpen(false);
+                                if (soundEnabled) playClickSound();
+                              }}
+                              className={`p-2.5 rounded-xl text-left font-bold text-xs sm:text-sm border transition-all flex items-center justify-between cursor-pointer ${
+                                selectedTopicId === topic.id
+                                  ? 'bg-white text-amber-950 border-amber-400 shadow-xs ring-2 ring-amber-300'
+                                  : 'bg-white/70 text-slate-700 border-slate-200 hover:bg-white'
+                              }`}
+                            >
+                              <span className="truncate">{topic.name}</span>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 shrink-0 ml-2">
+                                {topic.quizQuestions.length} សំណួរ
+                              </span>
+                            </button>
+                          ))}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. If Math Mode: Operations and Difficulty */}
+                {gameMode === 'math' && (
+                  <>
+                    {/* Math Operations Selection */}
+                    <div>
+                      <label className="block text-xs font-black text-slate-600 uppercase tracking-wider mb-2">
+                        ប្រមាណវិធីគណិតវិទ្យា
+                      </label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { id: 'mul', label: 'គុណ (×)' },
+                          { id: 'add', label: 'បូក (+)' },
+                          { id: 'sub', label: 'ដក (-)' },
+                          { id: 'div', label: 'ចែក (÷)' },
+                          { id: 'decimal', label: 'ទសភាគ (.)' },
+                          { id: 'mixed', label: 'លាយបញ្ចូលគ្នា' }
+                        ].map(item => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => setOperation(item.id as MathOperation)}
+                            className={`py-2 px-3 rounded-xl font-extrabold text-sm border transition-all cursor-pointer ${
+                              operation === item.id 
+                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs' 
+                                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Difficulty Levels */}
+                    <div>
+                      <label className="block text-xs font-black text-slate-600 uppercase tracking-wider mb-2">
+                        កម្រិតលំបាក
+                      </label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { id: 'easy', label: 'ងាយស្រួល (១-១០)' },
+                          { id: 'medium', label: 'មធ្យម (២-២៥)' },
+                          { id: 'hard', label: 'លំបាក (២-១០០)' }
+                        ].map(lvl => (
+                          <button
+                            key={lvl.id}
+                            type="button"
+                            onClick={() => setDifficulty(lvl.id as DifficultyLevel)}
+                            className={`py-2 px-2.5 rounded-xl font-extrabold text-xs sm:text-sm border transition-all cursor-pointer ${
+                              difficulty === lvl.id 
+                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs' 
+                                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            {lvl.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* 4. Target Win Pulls ahead */}
                 <div>
                   <label className="block text-xs font-black text-slate-600 uppercase tracking-wider mb-2">
                     ចំនួនជំហានទាញឈ្នះផ្តាច់
@@ -1634,6 +1715,73 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
                       </button>
                     ))}
                   </div>
+                </div>
+
+                {/* 5. Sound, Language & Screen System */}
+                <div className="pt-3 border-t border-slate-100 space-y-3">
+                  <label className="block text-xs font-black text-slate-600 uppercase tracking-wider">
+                    ប្រព័ន្ធសំឡេង & ភាសា & អេក្រង់
+                  </label>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {/* Sound Toggle */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSoundEnabled(!soundEnabled);
+                        playClickSound();
+                      }}
+                      className={`py-2.5 px-3 rounded-xl font-black text-xs sm:text-sm border transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                        soundEnabled 
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-300' 
+                          : 'bg-slate-50 text-slate-500 border-slate-200'
+                      }`}
+                    >
+                      {soundEnabled ? <Volume2 size={17} className="text-emerald-600" /> : <VolumeX size={17} className="text-rose-500" />}
+                      <span>{soundEnabled ? 'សំឡេង ៖ បើក' : 'សំឡេង ៖ បិទ'}</span>
+                    </button>
+
+                    {/* Language Toggle */}
+                    <div className="bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLang('kh');
+                          if (soundEnabled) playClickSound();
+                        }}
+                        className={`flex-1 py-1.5 text-xs font-black rounded-lg transition-all cursor-pointer text-center ${
+                          lang === 'kh' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        KH ខ្មែរ
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLang('en');
+                          if (soundEnabled) playClickSound();
+                        }}
+                        className={`flex-1 py-1.5 text-xs font-black rounded-lg transition-all cursor-pointer text-center ${
+                          lang === 'en' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        GB English
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Fullscreen Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toggleExpandedFullscreen();
+                      setIsSettingsOpen(false);
+                    }}
+                    className="w-full py-2 px-3 rounded-xl font-black text-xs sm:text-sm border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition-all cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <Maximize size={16} className="text-indigo-600" />
+                    <span>{isExpandedFullscreen ? 'បង្រួមអេក្រង់ធម្មតា' : 'ពង្រីកពេញអេក្រង់ (បិទ Nav)'}</span>
+                  </button>
                 </div>
               </div>
 
