@@ -40,7 +40,7 @@ interface AddWordsProps {
   onBack: () => void;
 }
 
-type TabType = 'topics' | 'words' | 'passages' | 'quiz';
+type TabType = 'topics' | 'words' | 'antonyms' | 'passages' | 'quiz';
 
 export default function AddWords({
   topics,
@@ -85,6 +85,7 @@ export default function AddWords({
   const [importParsedData, setImportParsedData] = React.useState<{
     topicName: string;
     difficultWords: WordItem[];
+    antonymWords: WordItem[];
     shortPassages: WordItem[];
     quizQuestions: QuizQuestion[];
   } | null>(null);
@@ -100,6 +101,16 @@ export default function AddWords({
   const [exampleInput, setExampleInput] = React.useState('');
   const [wordSearch, setWordSearch] = React.useState('');
   const [wordTypeFilter, setWordTypeFilter] = React.useState('ទាំងអស់');
+
+  // ==================== ANTONYM MODAL STATE ====================
+  const [isAntonymModalOpen, setIsAntonymModalOpen] = React.useState(false);
+  const [editingAntonymIdx, setEditingAntonymIdx] = React.useState<number | null>(null);
+  const [antonymWord1Input, setAntonymWord1Input] = React.useState('');
+  const [antonymWord2Input, setAntonymWord2Input] = React.useState('');
+  const [antonymTypeInput, setAntonymTypeInput] = React.useState('ពាក្យផ្ទុយ');
+  const [antonymDefInput, setAntonymDefInput] = React.useState('');
+  const [antonymExInput, setAntonymExInput] = React.useState('');
+  const [antonymSearch, setAntonymSearch] = React.useState('');
 
   // ==================== SHORT TEXT MODAL STATE ====================
   const [isPassageModalOpen, setIsPassageModalOpen] = React.useState(false);
@@ -162,6 +173,7 @@ export default function AddWords({
         name: topicNameInput.trim(),
         description: topicDescInput.trim() || 'ប្រធានបទមេរៀនថ្មី',
         difficultWords: [],
+        antonymWords: [],
         shortPassages: [],
         quizQuestions: [],
         createdAt: Date.now()
@@ -234,18 +246,20 @@ export default function AddWords({
         name: importParsedData.topicName || `ប្រធានបទមេរៀន ${topics.length + 1}`,
         description: `នាំចូលពី Excel: ${importFile?.name || ''}`,
         difficultWords: importParsedData.difficultWords,
+        antonymWords: importParsedData.antonymWords || [],
         shortPassages: importParsedData.shortPassages,
         quizQuestions: importParsedData.quizQuestions,
         createdAt: Date.now()
       };
       onAddTopic(newTopic);
       onSelectTopic(newTopic.id);
-      showSuccess(`បាននាំចូលប្រធានបទថ្មី "${newTopic.name}" ដែលមាន ${newTopic.difficultWords.length} ពាក្យ, ${newTopic.shortPassages.length} អត្ថបទ និង ${newTopic.quizQuestions.length} សំណួរ!`);
+      showSuccess(`បាននាំចូលប្រធានបទថ្មី "${newTopic.name}" ដែលមាន ${newTopic.difficultWords.length} ពាក្យពិបាក, ${(newTopic.antonymWords || []).length} ពាក្យផ្ទុយ, ${newTopic.shortPassages.length} អត្ថបទ និង ${newTopic.quizQuestions.length} សំណួរ!`);
     } else {
       // Overwrite / append into active topic
       const updated: Topic = {
         ...activeTopic,
         difficultWords: importParsedData.difficultWords.length > 0 ? importParsedData.difficultWords : activeTopic.difficultWords,
+        antonymWords: (importParsedData.antonymWords && importParsedData.antonymWords.length > 0) ? importParsedData.antonymWords : (activeTopic.antonymWords || []),
         shortPassages: importParsedData.shortPassages.length > 0 ? importParsedData.shortPassages : activeTopic.shortPassages,
         quizQuestions: importParsedData.quizQuestions.length > 0 ? importParsedData.quizQuestions : activeTopic.quizQuestions
       };
@@ -358,6 +372,91 @@ export default function AddWords({
     } finally {
       setIsAiLoading(false);
     }
+  };
+
+  // ==================== ANTONYMS ACTIONS (ពាក្យផ្ទុយ) ====================
+  const handleOpenAddAntonym = () => {
+    playClickSound();
+    setEditingAntonymIdx(null);
+    setAntonymWord1Input('');
+    setAntonymWord2Input('');
+    setAntonymTypeInput('ពាក្យផ្ទុយ');
+    setAntonymDefInput('');
+    setAntonymExInput('');
+    setIsAntonymModalOpen(true);
+  };
+
+  const handleOpenEditAntonym = (item: WordItem, idx: number) => {
+    playClickSound();
+    setEditingAntonymIdx(idx);
+    const antonymSepRegex = /\s*(?:≠|=\/|\/=|!=|><|<>|\\neq)\s*/;
+    if (antonymSepRegex.test(item.word)) {
+      const [w1, w2] = item.word.split(antonymSepRegex).map(s => s.trim());
+      setAntonymWord1Input(w1 || '');
+      setAntonymWord2Input(w2 || '');
+    } else {
+      setAntonymWord1Input(item.word);
+      setAntonymWord2Input('');
+    }
+    setAntonymTypeInput(item.wordType || 'ពាក្យផ្ទុយ');
+    setAntonymDefInput(item.definition || '');
+    setAntonymExInput(item.example || '');
+    setIsAntonymModalOpen(true);
+  };
+
+  const handleSaveAntonym = (e: React.FormEvent) => {
+    e.preventDefault();
+    playClickSound();
+    const w1 = antonymWord1Input.trim();
+    const w2 = antonymWord2Input.trim();
+
+    if (!w1) {
+      showError('សូមបញ្ចូលពាក្យទី១!');
+      return;
+    }
+
+    const typeVal = antonymTypeInput.trim() || 'ពាក្យផ្ទុយ';
+    const pairWord = w2 ? `${w1} ≠ ${w2}` : w1;
+    const parts = w2 ? [w1, '≠', w2] : splitKhmerWord(w1);
+    const defVal = antonymDefInput.trim() || (w2 ? `${w1} ផ្ទុយនឹង ${w2}` : 'ពាក្យផ្ទុយ');
+    const exVal = antonymExInput.trim() || (w2 ? `${w1} ផ្ទុយនឹង ${w2}` : '');
+
+    const item1: WordItem = {
+      word: pairWord,
+      wordType: typeVal,
+      parts,
+      definition: defVal,
+      example: exVal
+    };
+
+    const currentAntonyms = [...(activeTopic.antonymWords || [])];
+
+    if (editingAntonymIdx !== null) {
+      currentAntonyms[editingAntonymIdx] = item1;
+      showSuccess(`បានកែប្រែពាក្យផ្ទុយ "${pairWord}" ដោយជោគជ័យ!`);
+    } else {
+      currentAntonyms.unshift(item1);
+      showSuccess(`បានបញ្ចូលពាក្យផ្ទុយ "${pairWord}" ទៅកាន់ "${activeTopic.name}"!`);
+    }
+
+    onUpdateTopic({
+      ...activeTopic,
+      antonymWords: currentAntonyms
+    });
+
+    setIsAntonymModalOpen(false);
+  };
+
+  const handleDeleteAntonym = (idx: number) => {
+    playClickSound();
+    const currentAntonyms = activeTopic.antonymWords || [];
+    const targetWord = currentAntonyms[idx]?.word;
+    const newAntonyms = currentAntonyms.filter((_, i) => i !== idx);
+    onUpdateTopic({
+      ...activeTopic,
+      antonymWords: newAntonyms
+    });
+    showSuccess(`បានលុបពាក្យផ្ទុយ "${targetWord}" ដោយជោគជ័យ!`);
   };
 
   // ==================== SHORT PASSAGES ACTIONS ====================
@@ -524,6 +623,13 @@ export default function AddWords({
     });
   }, [activeTopic.shortPassages, passageSearch]);
 
+  const filteredAntonyms = React.useMemo(() => {
+    const list = activeTopic.antonymWords || [];
+    return list.filter(w => {
+      return !antonymSearch || w.word.includes(antonymSearch) || (w.definition && w.definition.includes(antonymSearch)) || (w.example && w.example.includes(antonymSearch));
+    });
+  }, [activeTopic.antonymWords, antonymSearch]);
+
   return (
     <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8 font-sans max-w-6xl mx-auto">
       {/* Top Notification Alerts */}
@@ -567,11 +673,11 @@ export default function AddWords({
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
               <span>គ្រប់គ្រងប្រធានបទមេរៀន</span>
               <span className="text-xs font-bold px-3 py-1 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-full">
-                Excel 3-Sheet System
+                Excel 4-Sheet System
               </span>
             </h1>
             <p className="text-sm text-slate-500 mt-0.5">
-              រៀបចំប្រធានបទ បញ្ចូលពាក្យពិបាក អត្ថបទខ្លី និងសំណួរពហុជម្រើសដាច់ដោយឡែកពីគ្នា
+              រៀបចំប្រធានបទ បញ្ចូលពាក្យពិបាក ពាក្យផ្ទុយ អត្ថបទខ្លី និងសំណួរពហុជម្រើសដាច់ដោយឡែកពីគ្នា
             </p>
           </div>
         </div>
@@ -590,20 +696,20 @@ export default function AddWords({
         <button
           onClick={() => { playClickSound(); setActiveTab('topics'); }}
           id="tab-topics"
-          className={`flex-1 min-w-[140px] py-3 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+          className={`flex-1 min-w-[130px] py-3 px-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
             activeTab === 'topics'
               ? 'bg-white text-slate-900 shadow-sm'
               : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
           }`}
         >
           <Layers size={18} className={activeTab === 'topics' ? 'text-indigo-600' : 'text-slate-400'} />
-          <span>ប្រធានបទទាំងអស់ ({topics.length})</span>
+          <span>ប្រធានបទ ({topics.length})</span>
         </button>
 
         <button
           onClick={() => { playClickSound(); setActiveTab('words'); }}
           id="tab-words"
-          className={`flex-1 min-w-[140px] py-3 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+          className={`flex-1 min-w-[130px] py-3 px-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
             activeTab === 'words'
               ? 'bg-white text-slate-900 shadow-sm'
               : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
@@ -614,9 +720,22 @@ export default function AddWords({
         </button>
 
         <button
+          onClick={() => { playClickSound(); setActiveTab('antonyms'); }}
+          id="tab-antonyms"
+          className={`flex-1 min-w-[130px] py-3 px-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+            activeTab === 'antonyms'
+              ? 'bg-white text-slate-900 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+          }`}
+        >
+          <RefreshCw size={18} className={activeTab === 'antonyms' ? 'text-amber-600' : 'text-slate-400'} />
+          <span>ពាក្យផ្ទុយ ({(activeTopic.antonymWords || []).length})</span>
+        </button>
+
+        <button
           onClick={() => { playClickSound(); setActiveTab('passages'); }}
           id="tab-passages"
-          className={`flex-1 min-w-[140px] py-3 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+          className={`flex-1 min-w-[130px] py-3 px-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
             activeTab === 'passages'
               ? 'bg-white text-slate-900 shadow-sm'
               : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
@@ -629,14 +748,14 @@ export default function AddWords({
         <button
           onClick={() => { playClickSound(); setActiveTab('quiz'); }}
           id="tab-quiz"
-          className={`flex-1 min-w-[140px] py-3 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+          className={`flex-1 min-w-[130px] py-3 px-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
             activeTab === 'quiz'
               ? 'bg-white text-slate-900 shadow-sm'
               : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
           }`}
         >
           <HelpCircle size={18} className={activeTab === 'quiz' ? 'text-indigo-600' : 'text-slate-400'} />
-          <span>សំណួរពហុជម្រើស ({activeTopic.quizQuestions.length})</span>
+          <span>សំណួរ ({activeTopic.quizQuestions.length})</span>
         </button>
       </div>
 
@@ -712,18 +831,22 @@ export default function AddWords({
                     </p>
 
                     {/* Stats pills */}
-                    <div className="grid grid-cols-3 gap-2 p-3 bg-slate-50 rounded-2xl mb-5 text-center">
+                    <div className="grid grid-cols-4 gap-1.5 p-2.5 bg-slate-50 rounded-2xl mb-5 text-center">
                       <div className="flex flex-col">
                         <span className="text-xs font-extrabold text-indigo-600">{t.difficultWords.length}</span>
-                        <span className="text-[10px] text-slate-500 font-medium">ពាក្យពិបាក</span>
+                        <span className="text-[9px] text-slate-500 font-medium">ពិបាក</span>
                       </div>
-                      <div className="flex flex-col border-x border-slate-200/60">
+                      <div className="flex flex-col border-l border-slate-200/60">
+                        <span className="text-xs font-extrabold text-amber-600">{(t.antonymWords || []).length}</span>
+                        <span className="text-[9px] text-slate-500 font-medium">ផ្ទុយ</span>
+                      </div>
+                      <div className="flex flex-col border-l border-slate-200/60">
                         <span className="text-xs font-extrabold text-emerald-600">{t.shortPassages.length}</span>
-                        <span className="text-[10px] text-slate-500 font-medium">អត្ថបទខ្លី</span>
+                        <span className="text-[9px] text-slate-500 font-medium">អត្ថបទ</span>
                       </div>
-                      <div className="flex flex-col">
+                      <div className="flex flex-col border-l border-slate-200/60">
                         <span className="text-xs font-extrabold text-purple-600">{t.quizQuestions.length}</span>
-                        <span className="text-[10px] text-slate-500 font-medium">សំណួរ MCQ</span>
+                        <span className="text-[9px] text-slate-500 font-medium">MCQ</span>
                       </div>
                     </div>
                   </div>
@@ -752,11 +875,11 @@ export default function AddWords({
                         onClick={() => {
                           playClickSound();
                           exportTopicToMultiSheetExcel(t);
-                          showSuccess(`បាននាំចេញ "${t.name}" ជា Excel ៣ Sheet ដោយជោគជ័យ!`);
+                          showSuccess(`បាននាំចេញ "${t.name}" ជា Excel ៤ Sheet ដោយជោគជ័យ!`);
                         }}
                         id={`btn-export-topic-${t.id}`}
                         className="flex-1 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                        title="នាំចេញជា Excel ៣ Sheet"
+                        title="នាំចេញជា Excel ៤ Sheet"
                       >
                         <Download size={14} />
                         <span>ទាញយក Excel</span>
@@ -966,7 +1089,147 @@ export default function AddWords({
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 3: SHORT PASSAGES (អត្ថបទខ្លី) */}
+      {/* TAB 3: ANTONYM WORDS (ពាក្យផ្ទុយ) */}
+      {/* ========================================================================= */}
+      {activeTab === 'antonyms' && (
+        <div className="space-y-6">
+          {/* Header Controls */}
+          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-xs flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <span className="text-xs font-bold text-amber-600 uppercase tracking-wider">ប្រធានបទសកម្ម</span>
+              <h2 className="text-xl font-extrabold text-slate-900 mt-0.5">{activeTopic.name}</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                ពាក្យផ្ទុយសរុប ៖ {(activeTopic.antonymWords || []).length} ពាក្យ (ប្រើក្នុងបណ្ណពាក្យ Flashcards, ផ្គូផ្គង និងល្បែងពាក្យផ្ទុយ)
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleOpenAddAntonym}
+                id="btn-add-antonym"
+                className="px-5 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-2xl font-bold text-sm shadow-sm transition-all flex items-center gap-2 cursor-pointer"
+              >
+                <Plus size={18} />
+                <span>បន្ថែមពាក្យផ្ទុយថ្មី</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <input
+              type="text"
+              value={antonymSearch}
+              onChange={(e) => setAntonymSearch(e.target.value)}
+              placeholder="ស្វែងរកពាក្យផ្ទុយ..."
+              className="w-full pl-11 pr-4 py-3 bg-white rounded-2xl border border-slate-200/80 text-sm focus:outline-amber-500 font-medium"
+            />
+          </div>
+
+          {/* Antonyms List */}
+          {filteredAntonyms.length === 0 ? (
+            <div className="bg-white rounded-3xl p-12 text-center border border-slate-100">
+              <RefreshCw size={48} className="mx-auto text-slate-300 mb-3" />
+              <h3 className="text-base font-bold text-slate-700 mb-1">មិនទាន់មានពាក្យផ្ទុយក្នុងប្រធានបទនេះនៅឡើយទេ</h3>
+              <p className="text-xs text-slate-400 mb-4">អ្នកអាចចុច "បន្ថែមពាក្យផ្ទុយថ្មី" ឬបញ្ចូលតាមរយៈឯកសារ Excel (Sheet 2: ពាក្យផ្ទុយ)</p>
+              <button
+                onClick={handleOpenAddAntonym}
+                className="px-4 py-2 bg-amber-600 text-white rounded-xl text-xs font-bold"
+              >
+                បន្ថែមពាក្យផ្ទុយដំបូង
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredAntonyms.map((item, idx) => {
+                const currentAntonyms = activeTopic.antonymWords || [];
+                const originalIndex = currentAntonyms.findIndex(w => w.word === item.word);
+                return (
+                  <div
+                    key={idx}
+                    className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs hover:border-slate-200 transition-all flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {(() => {
+                            const antonymSepRegex = /\s*(?:≠|=\/|\/=|!=|><|<>|\\neq)\s*/;
+                            if (antonymSepRegex.test(item.word)) {
+                              const [w1, w2] = item.word.split(antonymSepRegex).map(s => s.trim());
+                              return (
+                                <div className="flex items-center gap-2 bg-amber-50/60 px-3 py-1 rounded-xl border border-amber-200/60">
+                                  <span className="text-lg font-black text-amber-900">{w1}</span>
+                                  <span className="text-rose-500 font-black text-base select-none inline-flex items-center">
+                                    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                      <line x1="4" y1="8" x2="20" y2="8" />
+                                      <line x1="4" y1="16" x2="20" y2="16" />
+                                      <line x1="18" y1="3" x2="6" y2="21" />
+                                    </svg>
+                                  </span>
+                                  <span className="text-lg font-black text-amber-900">{w2}</span>
+                                </div>
+                              );
+                            }
+                            return <h4 className="text-xl font-black text-slate-900">{item.word}</h4>;
+                          })()}
+                          <span className="text-[11px] font-bold px-2.5 py-0.5 bg-amber-50 text-amber-700 rounded-full border border-amber-100">
+                            {item.wordType || 'ពាក្យផ្ទុយ'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleOpenEditAntonym(item, originalIndex)}
+                            className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-slate-50 rounded-lg transition-all"
+                            title="កែសម្រួល"
+                          >
+                            <Pencil size={15} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteAntonym(originalIndex)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                            title="លុប"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Parts Breakdown */}
+                      {item.parts && item.parts.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5 mb-3">
+                          <span className="text-[11px] text-slate-400 font-medium">បំបែកអក្សរ ៖</span>
+                          {item.parts.map((p, pIdx) => (
+                            <span key={pIdx} className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs font-bold rounded-md">
+                              {p}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Definition & Example */}
+                      {item.definition && (
+                        <p className="text-xs text-slate-600 mb-1 leading-relaxed">
+                          <span className="font-semibold text-slate-700">{item.definition.startsWith('ផ្ទុយនឹង') ? '' : 'និយមន័យ ៖ '}</span>
+                          {item.definition}
+                        </p>
+                      )}
+                      {item.example && (
+                        <p className="text-xs text-slate-500 leading-relaxed italic">
+                          <span className="font-semibold text-slate-600 not-italic">ឧទាហរណ៍ ៖</span> "{item.example}"
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 4: SHORT PASSAGES (អត្ថបទខ្លី) */}
       {/* ========================================================================= */}
       {activeTab === 'passages' && (
         <div className="space-y-6">
@@ -1323,24 +1586,30 @@ export default function AddWords({
                   <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider block mb-2">
                     លទ្ធផលអានបានពី Excel ៖
                   </span>
-                  <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="grid grid-cols-4 gap-2 text-center">
                     <div className="p-2 bg-white rounded-xl shadow-2xs">
                       <span className="text-base font-extrabold text-indigo-600 block">
                         {importParsedData.difficultWords.length}
                       </span>
-                      <span className="text-[11px] text-slate-500 font-semibold">ពាក្យពិបាក</span>
+                      <span className="text-[10px] text-slate-500 font-semibold">ពាក្យពិបាក</span>
+                    </div>
+                    <div className="p-2 bg-white rounded-xl shadow-2xs">
+                      <span className="text-base font-extrabold text-amber-600 block">
+                        {(importParsedData.antonymWords || []).length}
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-semibold">ពាក្យផ្ទុយ</span>
                     </div>
                     <div className="p-2 bg-white rounded-xl shadow-2xs">
                       <span className="text-base font-extrabold text-emerald-600 block">
                         {importParsedData.shortPassages.length}
                       </span>
-                      <span className="text-[11px] text-slate-500 font-semibold">អត្ថបទខ្លី</span>
+                      <span className="text-[10px] text-slate-500 font-semibold">អត្ថបទខ្លី</span>
                     </div>
                     <div className="p-2 bg-white rounded-xl shadow-2xs">
                       <span className="text-base font-extrabold text-purple-600 block">
                         {importParsedData.quizQuestions.length}
                       </span>
-                      <span className="text-[11px] text-slate-500 font-semibold">សំណួរ MCQ</span>
+                      <span className="text-[10px] text-slate-500 font-semibold">សំណួរ MCQ</span>
                     </div>
                   </div>
                 </div>
@@ -1506,6 +1775,115 @@ export default function AddWords({
                   <button
                     type="submit"
                     className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
+                  >
+                    រក្សាទុក
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================================= */}
+      {/* MODAL: ADD / EDIT ANTONYM (ពាក្យផ្ទុយ) */}
+      {/* ========================================================================= */}
+      <AnimatePresence>
+        {isAntonymModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-100"
+            >
+              <h3 className="text-xl font-extrabold text-slate-900 mb-1">
+                {editingAntonymIdx !== null ? 'កែសម្រួលពាក្យផ្ទុយ' : 'បន្ថែមពាក្យផ្ទុយថ្មី'}
+              </h3>
+              <p className="text-xs text-slate-500 mb-6">
+                បញ្ចូលទៅកាន់ប្រធានបទ ៖ <span className="font-bold text-amber-600">{activeTopic.name}</span>
+              </p>
+
+              <form onSubmit={handleSaveAntonym} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      ពាក្យទី១ <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={antonymWord1Input}
+                      onChange={(e) => setAntonymWord1Input(e.target.value)}
+                      placeholder="ឧ. ខ្ពស់"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-amber-500 focus:bg-white"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      {editingAntonymIdx !== null ? 'ពាក្យផ្ទុយគ្នានឹង' : 'ពាក្យទី២ (ផ្ទុយគ្នា)'}
+                    </label>
+                    <input
+                      type="text"
+                      value={antonymWord2Input}
+                      onChange={(e) => setAntonymWord2Input(e.target.value)}
+                      placeholder="ឧ. ទាប"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-amber-500 focus:bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    ប្រភេទពាក្យ
+                  </label>
+                  <input
+                    type="text"
+                    value={antonymTypeInput}
+                    onChange={(e) => setAntonymTypeInput(e.target.value)}
+                    placeholder="ឧ. គុណនាម / ពាក្យផ្ទុយ"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-amber-500 focus:bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    និយមន័យ ឬការពន្យល់ (ស្រេចចិត្ត)
+                  </label>
+                  <textarea
+                    value={antonymDefInput}
+                    onChange={(e) => setAntonymDefInput(e.target.value)}
+                    placeholder="ឧ. ផ្ទុយនឹង ៖ ទាប"
+                    rows={2}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-amber-500 focus:bg-white resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    ឧទាហរណ៍ប្រើប្រាស់ក្នុងប្រយោគ (ស្រេចចិត្ត)
+                  </label>
+                  <input
+                    type="text"
+                    value={antonymExInput}
+                    onChange={(e) => setAntonymExInput(e.target.value)}
+                    placeholder="ឧ. ដើមត្នោតនេះខ្ពស់ ឯដើមចេកនោះទាប។"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-amber-500 focus:bg-white"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setIsAntonymModalOpen(false)}
+                    className="px-5 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
+                  >
+                    បោះបង់
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
                   >
                     រក្សាទុក
                   </button>

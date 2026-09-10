@@ -3,10 +3,11 @@ import { WordItem, QuizQuestion, Topic } from '../types';
 import { splitKhmerWord } from './khmerSplit';
 
 /**
- * Downloads a sample Excel file (.xlsx) with 3 worksheets:
+ * Downloads a sample Excel file (.xlsx) with 4 worksheets:
  * 1. ពាក្យពិបាក (Difficult Words)
- * 2. អត្ថបទខ្លី (Short Text / Reading Passages)
- * 3. សំណួរពហុជម្រើស (Multiple Choice Quiz)
+ * 2. ពាក្យផ្ទុយ (Opposite Words / Antonyms)
+ * 3. អត្ថបទខ្លី (Short Text / Reading Passages)
+ * 4. សំណួរពហុជម្រើស (Multiple Choice Quiz)
  */
 export function downloadMultiSheetTemplate(topicName: string = 'គំរូប្រធានបទមេរៀន') {
   const wb = XLSX.utils.book_new();
@@ -42,8 +43,50 @@ export function downloadMultiSheetTemplate(topicName: string = 'គំរូប�
   ws1['!cols'] = [{ wch: 15 }, { wch: 18 }, { wch: 45 }, { wch: 45 }];
   XLSX.utils.book_append_sheet(wb, ws1, 'ពាក្យពិបាក');
 
-  // Sheet 2: អត្ថបទខ្លី
-  const sheet2Data = [
+  // Sheet 2: ពាក្យផ្ទុយ
+  const sheet2AntonymsData = [
+    {
+      'ពាក្យទី១': 'សម្បូរ',
+      'ពាក្យទី២ (ផ្ទុយ)': 'ខ្សត់',
+      'ប្រភេទពាក្យ/កម្រិត': 'ពាក្យផ្ទុយ',
+      'និយមន័យ': 'សម្បូរ ផ្ទុយនឹង ខ្សត់ (មានច្រើនលើសលុប ផ្ទុយពីខ្វះខាត)',
+      'ឧទាហរណ៍': 'ប្រទេសកម្ពុជាសម្បូរធនធានធម្មជាតិ មិនខ្សត់ខ្សោយឡើយ។'
+    },
+    {
+      'ពាក្យទី១': 'ឧស្សាហ៍',
+      'ពាក្យទី២ (ផ្ទុយ)': 'ខ្ជិល',
+      'ប្រភេទពាក្យ/កម្រិត': 'ពាក្យផ្ទុយ',
+      'និយមន័យ': 'ឧស្សាហ៍ ផ្ទុយនឹង ខ្ជិល (មានចិត្តព្យាយាមក្នុងការងារ និងការសិក្សា)',
+      'ឧទាហរណ៍': 'សិស្សឧស្សាហ៍រៀនសូត្រតែងទទួលបានលទ្ធផលល្អ ផ្ទុយពីសិស្សខ្ជិល។'
+    },
+    {
+      'ពាក្យទី១': 'ឆ្លាត',
+      'ពាក្យទី២ (ផ្ទុយ)': 'ល្ងង់',
+      'ប្រភេទពាក្យ/កម្រិត': 'ពាក្យផ្ទុយ',
+      'និយមន័យ': 'ឆ្លាត ផ្ទុយនឹង ល្ងង់ (មានប្រាជ្ញារហ័សរហួន យល់ដឹងច្រើន)',
+      'ឧទាហរណ៍': 'សិស្សឆ្លាតវៃឆាប់យល់មេរៀន ផ្ទុយពីសិស្សល្ងង់ខ្លៅ។'
+    },
+    {
+      'ពាក្យទី១': 'ធំ',
+      'ពាក្យទី២ (ផ្ទុយ)': 'តូច',
+      'ប្រភេទពាក្យ/កម្រិត': 'ពាក្យផ្ទុយ',
+      'និយមន័យ': 'ធំ ផ្ទុយនឹង តូច (មានទំហំមាឌច្រើន ឬកម្ពស់ខ្ពស់)',
+      'ឧទាហរណ៍': 'សត្វដំរីមាឌធំ ផ្ទុយនឹងសត្វកណ្ដុរមាឌតូច។'
+    },
+    {
+      'ពាក្យទី១': 'កាច',
+      'ពាក្យទី២ (ផ្ទុយ)': 'ស្លូត',
+      'ប្រភេទពាក្យ/កម្រិត': 'ពាក្យផ្ទុយ',
+      'និយមន័យ': 'កាច ផ្ទុយនឹង ស្លូត (មានចិត្តសាហាវ ផ្ទុយពីស្លូតបូត)',
+      'ឧទាហរណ៍': 'សត្វខ្លាកាចសាហាវ ផ្ទុយនឹងសត្វទន្សាយស្លូតបូត។'
+    }
+  ];
+  const ws2 = XLSX.utils.json_to_sheet(sheet2AntonymsData);
+  ws2['!cols'] = [{ wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 45 }, { wch: 45 }];
+  XLSX.utils.book_append_sheet(wb, ws2, 'ពាក្យផ្ទុយ');
+
+  // Sheet 3: អត្ថបទខ្លី
+  const sheet3Data = [
     {
       'ចំណងជើង/ប្រភេទ': 'អត្ថបទខ្លី ៖ រឿងសាលារៀន',
       'អត្ថបទខ្លី/ល្បះអំណាន': 'សាលារៀនរបស់យើងមានសួនច្បារស្អាត និងមានដើមឈើម្លប់ត្រជាក់។'
@@ -61,17 +104,17 @@ export function downloadMultiSheetTemplate(topicName: string = 'គំរូប�
       'អត្ថបទខ្លី/ល្បះអំណាន': 'កូនឆ្មាតូចរត់លេងលើវាលស្មៅពណ៌បៃតងយ៉ាងសប្បាយរីករាយ។'
     }
   ];
-  const ws2 = XLSX.utils.json_to_sheet(sheet2Data);
-  ws2['!cols'] = [{ wch: 25 }, { wch: 60 }];
-  XLSX.utils.book_append_sheet(wb, ws2, 'អត្ថបទខ្លី');
+  const ws3 = XLSX.utils.json_to_sheet(sheet3Data);
+  ws3['!cols'] = [{ wch: 25 }, { wch: 60 }];
+  XLSX.utils.book_append_sheet(wb, ws3, 'អត្ថបទខ្លី');
 
-  // Sheet 3: សំណួរពហុជម្រើស
-  const sheet3Data = [
+  // Sheet 4: សំណួរពហុជម្រើស
+  const sheet4Data = [
     {
       'សំណួរ': 'តើសត្វមួយណាជាសត្វចតុបាទស៊ីសាច់ជាអាហារ និងមានឆ្នូតខ្មៅលឿង?',
       'ជម្រើសទី១': 'សត្វខ្លា',
       'ជម្រើសទី២': 'ផ្លែស្វាយ',
-      'ជម្រើសទី៣': 'ផ្កាឈូក',
+      'ជម្រើសទីខ្': 'ផ្កាឈូក',
       'ជម្រើសទី៤': 'សាលារៀន',
       'ចម្លើយត្រូវ (១-៤ ឬ ក-ឃ)': 1,
       'ការពន្យល់': 'សត្វខ្លា គឺជាសត្វចតុបាទស៊ីសាច់ជាអាហារ ដែលមានឆ្នូតរាងកាយពណ៌លឿងខ្មៅយ៉ាងកាចសាហាវ។'
@@ -95,9 +138,9 @@ export function downloadMultiSheetTemplate(topicName: string = 'គំរូប�
       'ការពន្យល់': 'គ្រូបង្រៀន គឺជាអ្នកមានគុណបង្រៀនសិស្សានុសិស្សឲ្យមានចំណេះដឹង។'
     }
   ];
-  const ws3 = XLSX.utils.json_to_sheet(sheet3Data);
-  ws3['!cols'] = [{ wch: 45 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 22 }, { wch: 45 }];
-  XLSX.utils.book_append_sheet(wb, ws3, 'សំណួរពហុជម្រើស');
+  const ws4 = XLSX.utils.json_to_sheet(sheet4Data);
+  ws4['!cols'] = [{ wch: 45 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 22 }, { wch: 45 }];
+  XLSX.utils.book_append_sheet(wb, ws4, 'សំណួរពហុជម្រើស');
 
   // Save workbook file
   const fileName = `${topicName.replace(/\s+/g, '_')}_Template.xlsx`;
@@ -105,7 +148,7 @@ export function downloadMultiSheetTemplate(topicName: string = 'គំរូប�
 }
 
 /**
- * Exports a Topic into a 3-sheet Excel workbook.
+ * Exports a Topic into a 4-sheet Excel workbook.
  */
 export function exportTopicToMultiSheetExcel(topic: Topic) {
   const wb = XLSX.utils.book_new();
@@ -121,17 +164,40 @@ export function exportTopicToMultiSheetExcel(topic: Topic) {
   ws1['!cols'] = [{ wch: 18 }, { wch: 20 }, { wch: 45 }, { wch: 45 }];
   XLSX.utils.book_append_sheet(wb, ws1, 'ពាក្យពិបាក');
 
-  // Sheet 2: អត្ថបទខ្លី
-  const sheet2Data = topic.shortPassages.map(item => ({
+  // Sheet 2: ពាក្យផ្ទុយ
+  const antonymsList = topic.antonymWords || [];
+  const antonymSepRegex = /\s*(?:≠|=\/|\/=|!=|><|<>|\\neq)\s*/;
+  const sheet2Data = antonymsList.map(item => {
+    let w1 = item.word || '';
+    let w2 = '';
+    if (antonymSepRegex.test(w1)) {
+      const parts = w1.split(antonymSepRegex);
+      w1 = parts[0]?.trim() || '';
+      w2 = parts[1]?.trim() || '';
+    }
+    return {
+      'ពាក្យទី១': w1,
+      'ពាក្យទី២ (ផ្ទុយ)': w2,
+      'ប្រភេទពាក្យ/កម្រិត': item.wordType || 'ពាក្យផ្ទុយ',
+      'និយមន័យ': item.definition || '',
+      'ឧទាហរណ៍': item.example || ''
+    };
+  });
+  const ws2 = XLSX.utils.json_to_sheet(sheet2Data.length > 0 ? sheet2Data : [{ 'ពាក្យទី១': '', 'ពាក្យទី២ (ផ្ទុយ)': '', 'ប្រភេទពាក្យ/កម្រិត': '', 'និយមន័យ': '', 'ឧទាហរណ៍': '' }]);
+  ws2['!cols'] = [{ wch: 18 }, { wch: 18 }, { wch: 20 }, { wch: 45 }, { wch: 45 }];
+  XLSX.utils.book_append_sheet(wb, ws2, 'ពាក្យផ្ទុយ');
+
+  // Sheet 3: អត្ថបទខ្លី
+  const sheet3Data = topic.shortPassages.map(item => ({
     'ចំណងជើង/ប្រភេទ': item.wordType || '',
     'អត្ថបទខ្លី/ល្បះអំណាន': item.word || ''
   }));
-  const ws2 = XLSX.utils.json_to_sheet(sheet2Data.length > 0 ? sheet2Data : [{ 'ចំណងជើង/ប្រភេទ': '', 'អត្ថបទខ្លី/ល្បះអំណាន': '' }]);
-  ws2['!cols'] = [{ wch: 25 }, { wch: 60 }];
-  XLSX.utils.book_append_sheet(wb, ws2, 'អត្ថបទខ្លី');
+  const ws3 = XLSX.utils.json_to_sheet(sheet3Data.length > 0 ? sheet3Data : [{ 'ចំណងជើង/ប្រភេទ': '', 'អត្ថបទខ្លី/ល្បះអំណាន': '' }]);
+  ws3['!cols'] = [{ wch: 25 }, { wch: 60 }];
+  XLSX.utils.book_append_sheet(wb, ws3, 'អត្ថបទខ្លី');
 
-  // Sheet 3: សំណួរពហុជម្រើស
-  const sheet3Data = topic.quizQuestions.map(q => ({
+  // Sheet 4: សំណួរពហុជម្រើស
+  const sheet4Data = topic.quizQuestions.map(q => ({
     'សំណួរ': q.question || '',
     'ជម្រើសទី១': q.options[0] || '',
     'ជម្រើសទី២': q.options[1] || '',
@@ -140,22 +206,23 @@ export function exportTopicToMultiSheetExcel(topic: Topic) {
     'ចម្លើយត្រូវ (១-៤ ឬ ក-ឃ)': q.answerIndex + 1,
     'ការពន្យល់': q.explanation || ''
   }));
-  const ws3 = XLSX.utils.json_to_sheet(sheet3Data.length > 0 ? sheet3Data : [{
+  const ws4 = XLSX.utils.json_to_sheet(sheet4Data.length > 0 ? sheet4Data : [{
     'សំណួរ': '', 'ជម្រើសទី១': '', 'ជម្រើសទី២': '', 'ជម្រើសទី៣': '', 'ជម្រើសទី៤': '', 'ចម្លើយត្រូវ (១-៤ ឬ ក-ឃ)': '', 'ការពន្យល់': ''
   }]);
-  ws3['!cols'] = [{ wch: 45 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 22 }, { wch: 45 }];
-  XLSX.utils.book_append_sheet(wb, ws3, 'សំណួរពហុជម្រើស');
+  ws4['!cols'] = [{ wch: 45 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 22 }, { wch: 45 }];
+  XLSX.utils.book_append_sheet(wb, ws4, 'សំណួរពហុជម្រើស');
 
   const fileName = `${topic.name.replace(/[/\\?%*:|"<>]/g, '_')}.xlsx`;
   XLSX.writeFile(wb, fileName);
 }
 
 /**
- * Parses an uploaded multi-sheet Excel file into Difficult Words, Short Passages, and Quiz Questions.
+ * Parses an uploaded multi-sheet Excel file into Difficult Words, Antonyms, Short Passages, and Quiz Questions.
  */
 export async function parseMultiSheetTopicExcel(file: File): Promise<{
   topicName: string;
   difficultWords: WordItem[];
+  antonymWords: WordItem[];
   shortPassages: WordItem[];
   quizQuestions: QuizQuestion[];
 }> {
@@ -171,6 +238,7 @@ export async function parseMultiSheetTopicExcel(file: File): Promise<{
         let topicName = fileName || 'ប្រធានបទថ្មី';
 
         let difficultWords: WordItem[] = [];
+        let antonymWords: WordItem[] = [];
         let shortPassages: WordItem[] = [];
         let quizQuestions: QuizQuestion[] = [];
 
@@ -185,8 +253,9 @@ export async function parseMultiSheetTopicExcel(file: File): Promise<{
           return null;
         };
 
-        // 1. Parse Sheet 1: ពាក្យពិបាក
-        const wsWords = findSheet(['ពាក្យពិបាក', 'ពាក្យ', 'word', 'vocab', 'sheet1']) || workbook.Sheets[workbook.SheetNames[0]];
+        // 1. Parse Sheet: ពាក្យពិបាក
+        const wsWords = findSheet(['ពាក្យពិបាក', 'vocab', 'sheet1']) || 
+          (!workbook.SheetNames[0]?.includes('ផ្ទុយ') && !workbook.SheetNames[0]?.includes('អត្ថបទ') && !workbook.SheetNames[0]?.includes('សំណួរ') ? workbook.Sheets[workbook.SheetNames[0]] : null);
         if (wsWords) {
           const rows: any[] = XLSX.utils.sheet_to_json(wsWords);
           rows.forEach((row) => {
@@ -207,11 +276,61 @@ export async function parseMultiSheetTopicExcel(file: File): Promise<{
           });
         }
 
-        // 2. Parse Sheet 2: អត្ថបទខ្លី
-        const wsPassages = findSheet(['អត្ថបទខ្លី', 'អត្ថបទ', 'ល្បះ', 'passage', 'text', 'sentence', 'sheet2']) || 
-          (workbook.SheetNames.length > 1 ? workbook.Sheets[workbook.SheetNames[1]] : null);
-        
-        if (wsPassages && wsPassages !== wsWords) {
+        // 2. Parse Sheet: ពាក្យផ្ទុយ (Antonyms)
+        const wsAntonyms = findSheet(['ពាក្យផ្ទុយ', 'ផ្ទុយ', 'antonym', 'opposite', 'opposite word', 'opposites']);
+        if (wsAntonyms) {
+          const rows: any[] = XLSX.utils.sheet_to_json(wsAntonyms);
+          rows.forEach((row) => {
+            const rawWord1 = (row['ពាក្យទី១'] || row['ពាក្យ'] || row['ពាក្យ១'] || row['Word'] || row['word'] || '').toString().trim();
+            const rawWord2 = (row['ពាក្យទី២ (ផ្ទុយ)'] || row['ពាក្យទី២'] || row['ពាក្យផ្ទុយ'] || row['ផ្ទុយ'] || row['ពាក្យ២'] || row['Antonym'] || row['opposite'] || '').toString().trim();
+            
+            if (!rawWord1 && !rawWord2) return;
+
+            const wordType = (row['ប្រភេទពាក្យ/កម្រិត'] || row['ប្រភេទពាក្យ'] || row['ប្រភេទ'] || row['Type'] || 'ពាក្យផ្ទុយ').toString().trim();
+            const customDef = (row['និយមន័យ'] || row['អត្ថន័យ'] || row['Definition'] || '').toString().trim();
+            const customEx = (row['ឧទាហរណ៍'] || row['ល្បះគំរូ'] || row['Example'] || '').toString().trim();
+
+            // Antonym separator regex supporting ≠, =/, /=, !=, ><, <>, \neq
+            const antonymSepRegex = /\s*(?:≠|=\/|\/=|!=|><|<>|\\neq)\s*/;
+            let finalWord = rawWord1;
+            let parts: string[] = [];
+
+            if (antonymSepRegex.test(rawWord1)) {
+              const [p1, p2] = rawWord1.split(antonymSepRegex).map((s: string) => s.trim());
+              if (p1 && p2) {
+                finalWord = `${p1} ≠ ${p2}`;
+                parts = [p1, '≠', p2];
+              } else {
+                finalWord = rawWord1;
+                parts = [rawWord1];
+              }
+            } else if (rawWord1 && rawWord2) {
+              finalWord = `${rawWord1} ≠ ${rawWord2}`;
+              parts = [rawWord1, '≠', rawWord2];
+            } else if (rawWord1) {
+              finalWord = rawWord1;
+              parts = splitKhmerWord(rawWord1);
+            } else if (rawWord2) {
+              finalWord = rawWord2;
+              parts = splitKhmerWord(rawWord2);
+            }
+
+            const definition = customDef || (rawWord1 && rawWord2 ? `${rawWord1} ផ្ទុយនឹង ${rawWord2}` : (rawWord2 ? `ផ្ទុយនឹង ៖ ${rawWord2}` : ''));
+            const example = customEx || (rawWord1 && rawWord2 ? `${rawWord1} ផ្ទុយនឹង ${rawWord2}` : '');
+
+            antonymWords.push({
+              word: finalWord,
+              wordType: wordType || 'ពាក្យផ្ទុយ',
+              parts: parts.length > 0 ? parts : [finalWord],
+              definition,
+              example
+            });
+          });
+        }
+
+        // 3. Parse Sheet: អត្ថបទខ្លី
+        const wsPassages = findSheet(['អត្ថបទខ្លី', 'អត្ថបទ', 'ល្បះ', 'passage', 'text', 'sentence']);
+        if (wsPassages && wsPassages !== wsWords && wsPassages !== wsAntonyms) {
           const rows: any[] = XLSX.utils.sheet_to_json(wsPassages);
           rows.forEach((row) => {
             const text = (row['អត្ថបទខ្លី/ល្បះអំណាន'] || row['អត្ថបទខ្លី'] || row['អត្ថបទ'] || row['ល្បះ'] || row['Text'] || row['text'] || row['Passage'] || '').toString().trim();
@@ -229,11 +348,9 @@ export async function parseMultiSheetTopicExcel(file: File): Promise<{
           });
         }
 
-        // 3. Parse Sheet 3: សំណួរពហុជម្រើស
-        const wsQuiz = findSheet(['សំណួរពហុជម្រើស', 'សំណួរ', 'quiz', 'question', 'mcq', 'sheet3']) ||
-          (workbook.SheetNames.length > 2 ? workbook.Sheets[workbook.SheetNames[2]] : null);
-
-        if (wsQuiz && wsQuiz !== wsWords && wsQuiz !== wsPassages) {
+        // 4. Parse Sheet: សំណួរពហុជម្រើស
+        const wsQuiz = findSheet(['សំណួរពហុជម្រើស', 'សំណួរ', 'quiz', 'question', 'mcq']);
+        if (wsQuiz && wsQuiz !== wsWords && wsQuiz !== wsAntonyms && wsQuiz !== wsPassages) {
           const rows: any[] = XLSX.utils.sheet_to_json(wsQuiz);
           rows.forEach((row) => {
             const question = (row['សំណួរ'] || row['សំណួរពហុជម្រើស'] || row['Question'] || row['question'] || '').toString().trim();
@@ -275,6 +392,7 @@ export async function parseMultiSheetTopicExcel(file: File): Promise<{
         resolve({
           topicName,
           difficultWords,
+          antonymWords,
           shortPassages,
           quizQuestions
         });

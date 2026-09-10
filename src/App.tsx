@@ -13,6 +13,7 @@ import Quiz from './components/Quiz';
 import MathFinger from './components/MathFinger';
 import MysteryBox from './components/MysteryBox';
 import WordGrab from './components/WordGrab';
+import MathTugOfWar from './components/MathTugOfWar';
 import { AnimatePresence, motion } from 'motion/react';
 import { isSentenceItem } from './utils/khmerSplit';
 
@@ -26,7 +27,15 @@ export default function App() {
       if (saved) {
         const parsed: Topic[] = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          return parsed.map(p => {
+            const defaultMatch = DEFAULT_TOPICS.find(d => d.id === p.id);
+            return {
+              ...p,
+              difficultWords: p.difficultWords || defaultMatch?.difficultWords || [],
+              antonymWords: p.antonymWords || defaultMatch?.antonymWords || [],
+              shortPassages: (p.shortPassages && p.shortPassages.length > 0) ? p.shortPassages : (defaultMatch?.shortPassages || [])
+            };
+          });
         }
       }
       // Check if user had older single-list khmer_words and migrate
@@ -94,9 +103,13 @@ export default function App() {
     return topics.find(t => t.id === activeTopicId) || topics[0] || DEFAULT_TOPICS[0];
   }, [topics, activeTopicId]);
 
-  // Derived words strictly scoped to the active topic
+  // Derived words strictly scoped to the active topic (difficult words + antonym cards continuing below + short passages)
   const activeWords = React.useMemo(() => {
-    const list = [...activeTopic.difficultWords, ...activeTopic.shortPassages];
+    const list = [
+      ...activeTopic.difficultWords,
+      ...(activeTopic.antonymWords || []),
+      ...activeTopic.shortPassages
+    ];
     // If empty fallback to difficult words
     return list.length > 0 ? list : activeTopic.difficultWords;
   }, [activeTopic]);
@@ -238,6 +251,12 @@ export default function App() {
             words={activeWords} 
             topics={topics}
             activeTopicId={activeTopicId}
+            onBack={() => handleNavigate('dashboard')} 
+          />
+        );
+      case 'math-tug':
+        return (
+          <MathTugOfWar 
             onBack={() => handleNavigate('dashboard')} 
           />
         );

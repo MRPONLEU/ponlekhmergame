@@ -32,6 +32,13 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { playClickSound, playSuccessSound, speakText } from '../utils/audio';
+import { 
+  loadFramesFromDB, 
+  saveAllFramesToDB, 
+  saveFrameToDB, 
+  deleteFrameFromDB, 
+  compressFrameImage 
+} from '../utils/frameStorage';
 
 interface FlashcardsProps {
   words: WordItem[];
@@ -324,21 +331,110 @@ const vibrantBgColors = [
   'bg-teal-500',
 ];
 
+const ANTONYM_SEP_REGEX = /\s*(?:≠|=\/|\/=|!=|><|<>|\\neq)\s*/;
+
+export function parseAntonymPair(wordStr: string): { isAntonym: boolean; w1: string; w2: string } {
+  if (!wordStr) return { isAntonym: false, w1: '', w2: '' };
+  const parts = wordStr.split(ANTONYM_SEP_REGEX).map(s => s.trim()).filter(Boolean);
+  if (parts.length >= 2) {
+    return { isAntonym: true, w1: parts[0], w2: parts[1] };
+  }
+  return { isAntonym: false, w1: wordStr, w2: '' };
+}
+
 export default function Flashcards({ words, topicName, onBack }: FlashcardsProps) {
   const [filterType, setFilterType] = useState('ទាំងអស់');
 
-  const uniqueWordTypes = React.useMemo(() => {
-    const types = new Set<string>();
-    words.forEach(w => {
-      if (w.wordType) types.add(w.wordType);
-    });
-    return ['ទាំងអស់', ...Array.from(types)];
+  const isAntonymWord = (w: WordItem) => Boolean(
+    (w.word && ANTONYM_SEP_REGEX.test(w.word)) || 
+    w.wordType?.includes('ផ្ទុយ')
+  );
+  const isPassageWord = (w: WordItem) => Boolean(w.wordType?.includes('អត្ថបទខ្លី') || w.word.length > 28);
+  const isDifficultWord = (w: WordItem) => !isAntonymWord(w) && !isPassageWord(w);
+
+  const categoryStats = React.useMemo(() => {
+    const total = words.length;
+    const difficultCount = words.filter(isDifficultWord).length;
+    const antonymCount = words.filter(isAntonymWord).length;
+    const passageCount = words.filter(isPassageWord).length;
+    return { total, difficultCount, antonymCount, passageCount };
   }, [words]);
+
+  const uniqueWordTypes = React.useMemo(() => {
+    const base = ['ទាំងអស់'];
+    if (categoryStats.difficultCount > 0) base.push('ពាក្យពិបាក');
+    if (categoryStats.antonymCount > 0) base.push('ពាក្យផ្ទុយ');
+    if (categoryStats.passageCount > 0) base.push('អត្ថបទខ្លី');
+
+    // Also collect any specific custom types
+    const otherTypes = new Set<string>();
+    words.forEach(w => {
+      if (
+        w.wordType &&
+        !['ពាក្យពិបាក', 'ពាក្យផ្ទុយ', 'អត្ថបទខ្លី'].includes(w.wordType) &&
+        !w.wordType.includes('អត្ថបទខ្លី') &&
+        !w.wordType.includes('ផ្ទុយ')
+      ) {
+        otherTypes.add(w.wordType);
+      }
+    });
+    return [...base, ...Array.from(otherTypes)];
+  }, [words, categoryStats]);
+
+  const [includeTitleCard, setIncludeTitleCard] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('khmer_flashcard_include_title_card');
+      return saved !== null ? saved === 'true' : true;
+    } catch (e) {
+      return true;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('khmer_flashcard_include_title_card', includeTitleCard ? 'true' : 'false');
+    } catch (e) {}
+  }, [includeTitleCard]);
 
   const activeWords = React.useMemo(() => {
     if (filterType === 'ទាំងអស់') return words;
+    if (filterType === 'ពាក្យពិបាក') return words.filter(isDifficultWord);
+    if (filterType === 'ពាក្យផ្ទុយ') return words.filter(isAntonymWord);
+    if (filterType === 'អត្ថបទខ្លី') return words.filter(isPassageWord);
     return words.filter(w => w.wordType === filterType);
   }, [words, filterType]);
+
+  const isTitleCardWord = (w?: WordItem) => Boolean(w && (w.wordType === 'ចំណងជើងមេរៀន' || w.definition?.startsWith('ចំណងជើងមេរៀន ៖')));
+
+  const detectedLessonTitle = React.useMemo(() => {
+    if (filterType !== 'ទាំងអស់' && !['ពាក្យពិបាក', 'ពាក្យផ្ទុយ', 'អត្ថបទខ្លី'].includes(filterType)) {
+      return filterType;
+    }
+    const customTypeWord = words.find(w => 
+      w.wordType && 
+      !['ពាក្យពិបាក', 'ពាក្យផ្ទុយ', 'អត្ថបទខ្លី', 'ចំណងជើងមេរៀន'].includes(w.wordType.trim()) &&
+      !w.wordType.includes('អត្ថបទខ្លី') &&
+      !w.wordType.includes('ផ្ទុយ')
+    );
+    if (customTypeWord?.wordType) {
+      return customTypeWord.wordType.trim();
+    }
+    return topicName || 'មេរៀនភាសាខ្មែរ';
+  }, [words, filterType, topicName]);
+
+  const displayWords = React.useMemo(() => {
+    if (includeTitleCard && (detectedLessonTitle || topicName) && filterType === 'ទាំងអស់') {
+      const titleCardItem: WordItem = {
+        word: detectedLessonTitle,
+        wordType: topicName && topicName !== detectedLessonTitle ? topicName : 'ចំណងជើងមេរៀន',
+        parts: [],
+        definition: `ចំណងជើងមេរៀន ៖ ${detectedLessonTitle}`,
+        example: topicName && topicName !== detectedLessonTitle ? `ប្រធានបទ ៖ ${topicName}` : ''
+      };
+      return [titleCardItem, ...activeWords];
+    }
+    return activeWords;
+  }, [activeWords, includeTitleCard, topicName, detectedLessonTitle, filterType]);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -350,7 +446,7 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
   const [hasStarted, setHasStarted] = useState(false);
   const [fontBase64, setFontBase64] = useState<string | null>(null);
 
-  // Saved custom frames state with localStorage persistence
+  // Saved custom frames state with IndexedDB & localStorage persistence
   const [savedFrames, setSavedFrames] = useState<SavedCustomFrame[]>(() => {
     try {
       const saved = localStorage.getItem('khmer_flashcard_saved_frames');
@@ -359,10 +455,32 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch (e) {
-      console.error('Error loading saved frames:', e);
+      console.error('Error loading saved frames from localStorage:', e);
     }
     return [DEFAULT_KHMER_FRAME, DEFAULT_SCHOOL_FRAME];
   });
+
+  const [isUploadingImage, setIsUploadingImage] = useState<boolean>(false);
+
+  // Load custom frames from IndexedDB on component mount (unlimited storage)
+  useEffect(() => {
+    let isMounted = true;
+    async function initFrames() {
+      try {
+        const dbFrames = await loadFramesFromDB();
+        if (isMounted && dbFrames && dbFrames.length > 0) {
+          setSavedFrames(dbFrames);
+        } else if (isMounted) {
+          // If IndexedDB is empty, migrate current savedFrames into IndexedDB
+          saveAllFramesToDB(savedFrames);
+        }
+      } catch (err) {
+        console.error('Failed loading frames from IndexedDB:', err);
+      }
+    }
+    initFrames();
+    return () => { isMounted = false; };
+  }, []);
 
   const [activeFrameId, setActiveFrameId] = useState<string>(() => {
     try {
@@ -412,12 +530,14 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
   const [newFrameHideTitleBg, setNewFrameHideTitleBg] = useState<boolean>(false);
   const [frameSuccessMessage, setFrameSuccessMessage] = useState<string>('');
 
-  // Persist saved frames & selection to localStorage
+  // Persist saved frames to IndexedDB (and attempt safe localStorage backup)
   useEffect(() => {
+    saveAllFramesToDB(savedFrames);
     try {
       localStorage.setItem('khmer_flashcard_saved_frames', JSON.stringify(savedFrames));
     } catch (e) {
-      console.error('Failed saving frames to localStorage:', e);
+      // If localStorage is full, IndexedDB reliably stores all frames
+      console.warn('LocalStorage full, frames stored safely in IndexedDB');
     }
   }, [savedFrames]);
 
@@ -479,7 +599,7 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
     setSavedFrames(prev => prev.map(f => f.id === frameId ? { ...f, hideTitleBg: !f.hideTitleBg } : f));
   };
 
-  const handleSaveNewFrame = (urlToSave: string, customName?: string) => {
+  const handleSaveNewFrame = async (urlToSave: string, customName?: string) => {
     if (!urlToSave) return;
     
     const frameName = (customName || newFrameName).trim() || `ស៊ុមទី ${savedFrames.length + 1}`;
@@ -491,6 +611,9 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
       hideTitleBg: newFrameHideTitleBg,
       createdAt: Date.now(),
     };
+
+    // Save to IndexedDB
+    await saveFrameToDB(newFrameObj);
 
     setSavedFrames(prev => [newFrameObj, ...prev]);
     setActiveFrameId(newFrameObj.id);
@@ -506,9 +629,10 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
     setTimeout(() => setFrameSuccessMessage(''), 3500);
   };
 
-  const handleDeleteFrame = (idToDelete: string, e: React.MouseEvent) => {
+  const handleDeleteFrame = async (idToDelete: string, e: React.MouseEvent) => {
     e.stopPropagation();
     playClickSound();
+    await deleteFrameFromDB(idToDelete);
     setSavedFrames(prev => prev.filter(f => f.id !== idToDelete));
     if (activeFrameId === idToDelete) {
       setActiveFrameId('none');
@@ -516,18 +640,28 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
     setSlotFrameIds(prev => prev.map(id => id === idToDelete ? 'none' : id) as [string, string, string]);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const result = event.target?.result as string;
-        if (result) {
-          setNewFramePreview(result);
-          playClickSound();
-        }
-      };
-      reader.readAsDataURL(file);
+      setIsUploadingImage(true);
+      try {
+        const compressedDataUrl = await compressFrameImage(file, 1200, 1600, 0.85);
+        setNewFramePreview(compressedDataUrl);
+        playClickSound();
+      } catch (err) {
+        console.error('Error compressing image, falling back to raw reader:', err);
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const result = event.target?.result as string;
+          if (result) {
+            setNewFramePreview(result);
+            playClickSound();
+          }
+        };
+        reader.readAsDataURL(file);
+      } finally {
+        setIsUploadingImage(false);
+      }
     }
   };
 
@@ -605,7 +739,18 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
     
-    const totalCards = activeWords.length + 1;
+    const printCards: WordItem[] = [
+      ...(includeTitleCard && (detectedLessonTitle || topicName) ? [{
+        word: detectedLessonTitle,
+        wordType: topicName && topicName !== detectedLessonTitle ? topicName : 'ចំណងជើងមេរៀន',
+        parts: [],
+        definition: `ចំណងជើងមេរៀន ៖ ${detectedLessonTitle}`,
+        example: topicName && topicName !== detectedLessonTitle ? `ប្រធានបទ ៖ ${topicName}` : ''
+      }] : []),
+      ...activeWords
+    ];
+    
+    const totalCards = printCards.length;
     const pages = Math.ceil(totalCards / 3);
     const borderColors = ['#3B82F6', '#F97316', '#16A34A', '#A855F7', '#E11D48', '#0D9488'];
     
@@ -1193,6 +1338,82 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
             z-index: 12;
             overflow: visible;
           }
+
+          .card-word-title-card {
+            font-family: var(--card-font-family);
+            font-size: calc(var(--card-font-size, 70pt) * 0.58);
+            font-weight: var(--card-font-weight, 700);
+            color: var(--card-color);
+            margin: 0;
+            text-shadow: 2px 2px 0px rgba(0,0,0,0.08);
+            line-height: 1.35;
+            padding: 6px 18px;
+            text-align: center;
+            z-index: 12;
+            overflow: visible;
+            max-width: 95%;
+            word-break: break-word;
+          }
+
+          .card-word-antonym {
+            font-family: var(--card-font-family);
+            font-size: calc(var(--card-font-size, 70pt) * 0.9);
+            font-weight: var(--card-font-weight, 700);
+            color: var(--card-color);
+            margin: 0;
+            text-shadow: 2px 2px 0px rgba(0,0,0,0.08);
+            line-height: 1.3;
+            padding: 6px 0;
+            text-align: center;
+            z-index: 12;
+            overflow: visible;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+          }
+
+          .antonym-sign {
+            color: #ea580c;
+            font-size: 0.36em;
+            font-weight: 700;
+            line-height: 1;
+            padding: 0 4px;
+            user-select: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            vertical-align: middle;
+            transform: translateY(-1px);
+            opacity: 0.95;
+          }
+
+          .antonym-sign svg {
+            display: inline-block;
+            width: 0.85em;
+            height: 0.85em;
+          }
+
+          .antonym-w1, .antonym-w2 {
+            color: var(--card-color);
+            white-space: nowrap;
+          }
+
+          .card-word-passage {
+            font-family: var(--card-font-family);
+            font-size: calc(var(--card-font-size, 70pt) * 0.42);
+            font-weight: var(--card-font-weight, 700);
+            color: var(--card-color);
+            margin: 0;
+            text-shadow: 1px 1px 0px rgba(0,0,0,0.08);
+            line-height: 1.5;
+            padding: 8px 16px;
+            text-align: center;
+            z-index: 12;
+            overflow: visible;
+            max-width: 92%;
+            word-break: break-word;
+          }
           
           .card-def {
             font-size: 20pt;
@@ -1386,31 +1607,47 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
             frameMarkup = `<img src="${cardFrameUrl}" class="custom-frame-overlay" />`;
           }
 
-          if (globalCardIndex === 0) {
-            const titleText = topicName || 'ប័ណ្ណពាក្យ';
-            htmlContent += `
-              <div class="card ${hasFrame ? 'has-frame' : ''}" data-frame-id="${cardFrameId}" data-title-pos="${cardTitlePos}" data-hide-title-bg="${cardHideBg ? 'true' : 'false'}" data-original-color="${color}" style="--card-color: ${color};">
-                ${frameMarkup}
-                <div class="card-inner">
-                  <h2 class="card-word" style="font-size: 32pt;">${titleText}</h2>
-                </div>
-              </div>
-            `;
-          } else {
-            const word = activeWords[globalCardIndex - 1];
-            const cleanType = word.wordType ? word.wordType.replace(/^អំណាន\s*[:៖]?\s*/i, '').trim() : '';
-            const typeDisplay = cleanType || (topicName || 'ពាក្យ');
+          const word = printCards[globalCardIndex];
+          const isTitleCard = isTitleCardWord(word) || word.wordType === 'ចំណងជើងមេរៀន' || (includeTitleCard && globalCardIndex === 0 && word.word === detectedLessonTitle);
+          const antonymData = parseAntonymPair(word.word);
+          const isAntonym = isAntonymWord(word);
+          const isPassage = isPassageWord(word);
+          const typeDisplay = word.wordType ? word.wordType.trim() : (isAntonym ? 'ពាក្យផ្ទុយ' : (isPassage ? 'អត្ថបទខ្លី' : 'ពាក្យពិបាក'));
 
-            htmlContent += `
-              <div class="card ${hasFrame ? 'has-frame' : ''}" data-frame-id="${cardFrameId}" data-title-pos="${cardTitlePos}" data-hide-title-bg="${cardHideBg ? 'true' : 'false'}" data-original-color="${color}" style="--card-color: ${color};">
-                ${frameMarkup}
-                <div class="card-inner">
-                  <div class="card-top-left">${typeDisplay}</div>
-                  <h2 class="card-word">${word.word}</h2>
-                </div>
-              </div>
+          let wordMarkup = '';
+          if (isTitleCard) {
+            wordMarkup = `<h2 class="card-word card-word-title-card">${word.word}</h2>`;
+          } else if (antonymData.isAntonym) {
+            wordMarkup = `
+              <h2 class="card-word card-word-antonym">
+                <span class="antonym-w1">${antonymData.w1}</span>
+                <span class="antonym-sign">
+                  <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;">
+                    <line x1="4" y1="8" x2="20" y2="8" />
+                    <line x1="4" y1="16" x2="20" y2="16" />
+                    <line x1="18" y1="3" x2="6" y2="21" />
+                  </svg>
+                </span>
+                <span class="antonym-w2">${antonymData.w2}</span>
+              </h2>
             `;
+          } else if (isPassage) {
+            wordMarkup = `<h2 class="card-word card-word-passage">${word.word}</h2>`;
+          } else {
+            wordMarkup = `<h2 class="card-word">${word.word}</h2>`;
           }
+
+          const topLeftMarkup = isTitleCard ? '' : `<div class="card-top-left">${typeDisplay}</div>`;
+
+          htmlContent += `
+            <div class="card ${hasFrame ? 'has-frame' : ''}" data-frame-id="${cardFrameId}" data-title-pos="${cardTitlePos}" data-hide-title-bg="${cardHideBg ? 'true' : 'false'}" data-original-color="${color}" style="--card-color: ${color};">
+              ${frameMarkup}
+              <div class="card-inner">
+                ${topLeftMarkup}
+                ${wordMarkup}
+              </div>
+            </div>
+          `;
         } else {
           // Render an invisible placeholder card to preserve the exact same layout spacing
           htmlContent += `
@@ -1674,7 +1911,7 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
   const handleNext = () => {
     playClickSound();
     setIsFlipped(false);
-    if (currentIndex < activeWords.length - 1) {
+    if (currentIndex < displayWords.length - 1) {
       setCurrentIndex((prev) => prev + 1);
     } else {
       setIsFinished(true);
@@ -1716,18 +1953,18 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
   });
 
   useEffect(() => {
-    if (hasStarted && !isFinished && activeWords[currentIndex]) {
+    if (hasStarted && !isFinished && displayWords[currentIndex]) {
       // Small delay to allow flip animation to start
       const timer = setTimeout(() => {
         if (!isFlipped) {
-          speakText(activeWords[currentIndex].word, 'km-KH');
+          speakText(displayWords[currentIndex].word, 'km-KH');
         } else {
-          speakText(activeWords[currentIndex].definition, 'km-KH');
+          speakText(displayWords[currentIndex].definition, 'km-KH');
         }
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [currentIndex, isFlipped, hasStarted, isFinished, activeWords]);
+  }, [currentIndex, isFlipped, hasStarted, isFinished, displayWords]);
 
   if (isFinished) {
     return (
@@ -1769,7 +2006,7 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
     );
   }
 
-  if (activeWords.length === 0) {
+  if (displayWords.length === 0) {
     return (
       <div className="min-h-screen bg-transparent flex flex-col items-center justify-center p-6 text-center font-sans">
         <HelpCircle size={48} className="text-border-beige mb-3" />
@@ -1797,7 +2034,7 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
     );
   }
 
-  const currentWord = activeWords[currentIndex];
+  const currentWord = displayWords[currentIndex];
 
   return (
     <div className={`font-sans transition-all duration-300 ${isFullscreen ? 'fixed inset-0 z-50 bg-[#F9F7F2] p-8 md:p-12 lg:p-16 flex items-center justify-center' : 'min-h-screen bg-transparent py-12 px-4 sm:px-6 lg:px-8'}`}>
@@ -1843,7 +2080,7 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
              >
                <Printer size={20} />
              </button>
-             <div className="relative">
+              <div className="relative">
                 <button
                   onClick={() => setShowSettings(!showSettings)}
                   className="p-2.5 bg-white border border-border-beige text-charcoal hover:bg-stone-bg rounded-full shadow-sm transition-all cursor-pointer"
@@ -1869,6 +2106,25 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
                           ))}
                         </select>
                       </div>
+
+                      {topicName && (
+                        <div className="pt-2 border-t border-border-beige">
+                          <label className="flex items-center gap-2 text-xs font-bold text-charcoal cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={includeTitleCard}
+                              onChange={(e) => {
+                                playClickSound();
+                                setIncludeTitleCard(e.target.checked);
+                                setCurrentIndex(0);
+                                setIsFlipped(false);
+                              }}
+                              className="w-4 h-4 text-amber-600 rounded border-border-beige cursor-pointer accent-amber-600"
+                            />
+                            <span>បណ្ណចំណងជើងមេរៀន (Title Card)</span>
+                          </label>
+                        </div>
+                      )}
 
                       <div className="pt-2 border-t border-border-beige">
                         <label className="text-xs font-bold text-soft-gray block mb-1.5">ល្បឿនប្ដូរកាត (Speed)</label>
@@ -1908,10 +2164,48 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
             </button>
 
             <div className="text-sm font-bold text-soft-gray bg-white px-4 py-2 rounded-full border border-border-beige shadow-sm">
-              {currentIndex + 1} / {activeWords.length}
+              {currentIndex + 1} / {displayWords.length}
             </div>
           </div>
         </div>
+        )}
+
+        {/* Category Filter Pills (When playing) */}
+        {!isFullscreen && (
+          <div className="w-full flex items-center justify-center gap-2 overflow-x-auto pb-2 mb-3 scrollbar-none flex-wrap">
+            {uniqueWordTypes.map((type) => {
+              const isSelected = filterType === type;
+              let count = words.length;
+              if (type === 'ពាក្យពិបាក') count = categoryStats.difficultCount;
+              else if (type === 'ពាក្យផ្ទុយ') count = categoryStats.antonymCount;
+              else if (type === 'អត្ថបទខ្លី') count = categoryStats.passageCount;
+              else if (type !== 'ទាំងអស់') count = words.filter(w => w.wordType === type).length;
+
+              return (
+                <button
+                  key={type}
+                  onClick={() => {
+                    playClickSound();
+                    setFilterType(type);
+                    setCurrentIndex(0);
+                    setIsFlipped(false);
+                  }}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-all cursor-pointer shadow-xs ${
+                    isSelected
+                      ? 'bg-amber-600 text-white shadow-md scale-102 ring-2 ring-amber-400/40'
+                      : 'bg-white text-slate-700 hover:bg-amber-50/60 border border-border-beige'
+                  }`}
+                >
+                  <span>{type}</span>
+                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+                    isSelected ? 'bg-white/20 text-white' : 'bg-stone-100 text-slate-500'
+                  }`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         )}
 
         {/* Flashcard Area */}
@@ -2043,17 +2337,22 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
                   )}
 
                   {/* Title Position Label on Card */}
-                  <div className={`absolute z-[50] text-xs font-bold px-4 py-1.5 transition-all ${
-                    getStudyCardTitlePositionClasses(activeStudyFrameTitlePos)
-                  } ${
-                    activeStudyFrameHideBg
-                      ? 'bg-transparent text-[var(--card-color)] border-0 shadow-none drop-shadow-[0_1px_2px_rgba(255,255,255,0.95)]'
-                      : isFlipped 
-                        ? 'bg-white/10 text-stone-200 border-0 rounded-full' 
-                        : 'bg-white/85 text-[var(--card-color)] border border-amber-300/60 shadow-xs rounded-full'
-                  }`}>
-                    {currentWord.wordType ? currentWord.wordType.replace(/^អំណាន\s*[:៖]?\s*/i, '').trim() || (topicName || 'ពាក្យ') : (topicName || 'ពាក្យ')}
-                  </div>
+                  {!isTitleCardWord(currentWord) && (
+                    <div className={`absolute z-[50] text-xs font-bold px-4 py-1.5 transition-all ${
+                      getStudyCardTitlePositionClasses(activeStudyFrameTitlePos)
+                    } ${
+                      activeStudyFrameHideBg
+                        ? 'bg-transparent text-[var(--card-color)] border-0 shadow-none drop-shadow-[0_1px_2px_rgba(255,255,255,0.95)]'
+                        : isFlipped 
+                          ? 'bg-white/10 text-stone-200 border-0 rounded-full' 
+                          : 'bg-white/85 text-[var(--card-color)] border border-amber-300/60 shadow-xs rounded-full'
+                    }`}>
+                      {(() => {
+                        const isAntonym = isAntonymWord(currentWord);
+                        return currentWord.wordType ? currentWord.wordType.trim() : (isAntonym ? 'ពាក្យផ្ទុយ' : 'ពាក្យពិបាក');
+                      })()}
+                    </div>
+                  )}
                   
                   {/* Flip Indicator and Play (Fullscreen) */}
                   <div className="absolute top-6 right-6 flex items-center gap-4 z-[60]">
@@ -2077,42 +2376,115 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
 
                 {!isFlipped ? (
                   // FRONT OF CARD
-                  <div className="flex flex-col items-center gap-6 relative z-30">
-                    <h2 
-                      style={{ 
-                        fontFamily: currentFont.fontFamily,
-                        fontWeight: currentFont.fontWeight || 700 
-                      }}
-                      className={`text-7xl md:text-[9rem] tracking-tight mt-2 md:mt-6 select-none ${vibrantColors[currentIndex % vibrantColors.length]}`}
-                    >
-                      {currentWord.word}
-                    </h2>
-                    <div className="flex flex-wrap items-center justify-center gap-3 mt-6 md:mt-10">
-                      {currentWord.parts.map((p, pIdx) => (
-                        <span 
-                          key={pIdx} 
-                          style={{ 
-                            fontFamily: currentFont.fontFamily,
-                            fontWeight: currentFont.fontWeight || 700 
-                          }}
-                          className={`px-4 py-2 md:px-6 md:py-3 rounded-2xl text-xl md:text-3xl text-white shadow-sm ${vibrantBgColors[currentIndex % vibrantBgColors.length]}`}
-                        >
-                          {p}
-                        </span>
-                      ))}
+                  isTitleCardWord(currentWord) ? (
+                    <div className="flex flex-col items-center justify-center gap-4 relative z-30 w-full px-4 sm:px-8 max-w-4xl text-center">
+                      <span className="px-4 py-1.5 rounded-full bg-amber-100 text-amber-800 text-xs sm:text-sm font-bold border border-amber-200 shadow-xs">
+                        🏷️ បណ្ណចំណងជើងមេរៀន
+                      </span>
+                      <h2 
+                        style={{ 
+                          fontFamily: currentFont.fontFamily,
+                          fontWeight: currentFont.fontWeight || 700 
+                        }}
+                        className={`text-3xl sm:text-5xl md:text-6xl font-black leading-relaxed tracking-normal text-center select-none ${vibrantColors[currentIndex % vibrantColors.length]}`}
+                      >
+                        {currentWord.word}
+                      </h2>
+                      <span className="text-xs sm:text-sm text-soft-gray font-medium">
+                        (ចុចដើម្បីមើលព័ត៌មាន ឬបន្តទៅបណ្ណបន្ទាប់)
+                      </span>
                     </div>
-                  </div>
+                  ) : parseAntonymPair(currentWord.word).isAntonym ? (
+                    (() => {
+                      const antonymInfo = parseAntonymPair(currentWord.word);
+                      return (
+                        <div className="flex flex-col items-center justify-center gap-4 relative z-30 w-full">
+                          <div className="flex items-center justify-center gap-3 sm:gap-6 md:gap-8 flex-wrap">
+                            <span 
+                              style={{ 
+                                fontFamily: currentFont.fontFamily,
+                                fontWeight: currentFont.fontWeight || 700 
+                              }}
+                              className={`text-5xl sm:text-7xl md:text-8xl tracking-tight select-none ${vibrantColors[currentIndex % vibrantColors.length]}`}
+                            >
+                              {antonymInfo.w1}
+                            </span>
+                            <span className="flex items-center justify-center text-amber-600 select-none px-2 self-center opacity-90">
+                              <svg viewBox="0 0 24 24" className="w-5 h-5 sm:w-7 sm:h-7 md:w-9 md:h-9" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="4" y1="8" x2="20" y2="8" />
+                                <line x1="4" y1="16" x2="20" y2="16" />
+                                <line x1="18" y1="3" x2="6" y2="21" />
+                              </svg>
+                            </span>
+                            <span 
+                              style={{ 
+                                fontFamily: currentFont.fontFamily,
+                                fontWeight: currentFont.fontWeight || 700 
+                              }}
+                              className={`text-5xl sm:text-7xl md:text-8xl tracking-tight select-none ${vibrantColors[(currentIndex + 1) % vibrantColors.length]}`}
+                            >
+                              {antonymInfo.w2}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()
+                  ) : isPassageWord(currentWord) ? (
+                    <div className="flex flex-col items-center justify-center gap-4 relative z-30 w-full px-4 sm:px-8 max-w-4xl">
+                      <h2 
+                        style={{ 
+                          fontFamily: currentFont.fontFamily,
+                          fontWeight: currentFont.fontWeight || 700 
+                        }}
+                        className={`text-2xl sm:text-4xl md:text-5xl font-bold leading-relaxed tracking-normal text-center select-none ${vibrantColors[currentIndex % vibrantColors.length]}`}
+                      >
+                        {currentWord.word}
+                      </h2>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-6 relative z-30">
+                      <h2 
+                        style={{ 
+                          fontFamily: currentFont.fontFamily,
+                          fontWeight: currentFont.fontWeight || 700 
+                        }}
+                        className={`text-7xl md:text-[9rem] tracking-tight mt-2 md:mt-6 select-none ${vibrantColors[currentIndex % vibrantColors.length]}`}
+                      >
+                        {currentWord.word}
+                      </h2>
+                      <div className="flex flex-wrap items-center justify-center gap-3 mt-6 md:mt-10">
+                        {currentWord.parts.map((p, pIdx) => (
+                          <span 
+                            key={pIdx} 
+                            style={{ 
+                              fontFamily: currentFont.fontFamily,
+                              fontWeight: currentFont.fontWeight || 700 
+                            }}
+                            className={`px-4 py-2 md:px-6 md:py-3 rounded-2xl text-xl md:text-3xl text-white shadow-sm ${vibrantBgColors[currentIndex % vibrantBgColors.length]}`}
+                          >
+                            {p}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )
                 ) : (
                   // BACK OF CARD
                   <div className="flex flex-col items-center gap-6 w-full px-4 relative z-30">
                     <div className="text-center w-full max-w-4xl">
                       <span className="text-sm md:text-base font-bold text-gray-400 uppercase tracking-wide block mb-4">
-                        អត្ថន័យ និងការបកស្រាយ៖
+                        {isTitleCardWord(currentWord) ? 'ចំណងជើងមេរៀន ៖' : (isAntonymWord(currentWord) ? 'ពាក្យផ្ទុយ និងអត្ថន័យ ៖' : (isPassageWord(currentWord) ? 'អត្ថបទខ្លី និងការបកស្រាយ ៖' : 'អត្ថន័យ និងការបកស្រាយ៖'))}
                       </span>
                       <p className="text-xl md:text-3xl text-gray-100 leading-relaxed font-semibold">
                         {currentWord.definition}
                       </p>
                     </div>
+
+                    {isTitleCardWord(currentWord) && (
+                      <div className="mt-2 px-5 py-2.5 bg-white/10 rounded-2xl border border-white/20 text-stone-200 text-sm md:text-base font-medium">
+                        ចំនួនពាក្យក្នុងមេរៀននេះ ៖ <span className="font-bold text-amber-300">{words.length} បណ្ណ</span>
+                      </div>
+                    )}
 
                     {currentWord.example && (
                       <div className="text-center w-full max-w-4xl mt-6">
@@ -2493,11 +2865,22 @@ export default function Flashcards({ words, topicName, onBack }: FlashcardsProps
                   <label className="text-xs font-bold text-charcoal block mb-1">
                     ជ្រើសរើសរូបភាពពីឧបករណ៍ (Browse Image File) ៖
                   </label>
-                  <label className="w-full py-4 px-4 bg-amber-50/50 border-2 border-dashed border-amber-300 hover:border-amber-500 rounded-2xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-all">
-                    <Upload size={24} className="text-amber-600" />
-                    <span className="text-xs font-bold text-amber-900">ចុចដើម្បីជ្រើសរើសរូបភាព (PNG/JPG)</span>
-                    <span className="text-[10px] text-soft-gray">ណែនាំ៖ រូបភាព PNG ថ្លាកណ្ដាល (Transparent PNG)</span>
-                    <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
+                  <label className={`w-full py-4 px-4 bg-amber-50/50 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-all ${
+                    isUploadingImage ? 'border-amber-400 bg-amber-100/50 pointer-events-none' : 'border-amber-300 hover:border-amber-500'
+                  }`}>
+                    {isUploadingImage ? (
+                      <div className="flex flex-col items-center gap-2 py-1">
+                        <div className="w-6 h-6 border-2 border-amber-600 border-t-transparent rounded-full animate-spin"></div>
+                        <span className="text-xs font-bold text-amber-900">កំពុងដំណើរការ និងបង្រួមរូបភាពស្វ័យប្រវត្តិ...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <Upload size={24} className="text-amber-600" />
+                        <span className="text-xs font-bold text-amber-900">ចុចដើម្បីជ្រើសរើសរូបភាព (PNG/JPG/WebP)</span>
+                        <span className="text-[10px] text-soft-gray">ណែនាំ៖ រូបភាព PNG ថ្លាកណ្ដាល • ផ្ទុកលើ IndexedDB បានច្រើនមិនកំណត់</span>
+                      </>
+                    )}
+                    <input type="file" accept="image/*" onChange={handleFileUpload} disabled={isUploadingImage} className="hidden" />
                   </label>
                 </div>
 

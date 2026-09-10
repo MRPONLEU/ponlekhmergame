@@ -17,7 +17,8 @@ import {
   ChevronDown,
   Download,
   Settings,
-  Hand
+  Hand,
+  Swords
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { playClickSound, playSuccessSound } from '../utils/audio';
@@ -74,6 +75,15 @@ export default function Dashboard({
       icon: Layers,
       iconBoxBg: 'bg-indigo-50 text-indigo-600',
       badge: `${topics.length} ប្រធានបទ`,
+      highlight: true
+    },
+    {
+      id: 'math-tug' as ViewState,
+      title: 'ទាញព្រ័ត្រ គណិតវិទ្យា',
+      subtitle: 'ល្បែងប្រកួតប្រជែងគណិតវិទ្យាជាក្រុម (ក្រុមទី ១ vs ក្រុមទី ២) ឆ្លើយលឿនទាញឈ្នះ',
+      icon: Swords,
+      iconBoxBg: 'bg-indigo-100 text-indigo-700',
+      badge: 'ថ្មី • លេងជាក្រុម',
       highlight: true
     },
     {
