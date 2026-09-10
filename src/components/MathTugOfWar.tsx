@@ -948,7 +948,7 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
               >
                 {/* Student Tug of War Image */}
                 <img 
-                  src="/images/images1.png" 
+                  src="/images/images.png" 
                   alt="សិស្សទាញព្រ័ត្រ (Student Tug of War)" 
                   className={`w-full max-h-[160px] sm:max-h-[210px] md:max-h-[250px] object-contain select-none pointer-events-none transition-all duration-300 ${
                     lastWinnerTeam ? 'drop-shadow-xl brightness-105' : 'drop-shadow-md'
