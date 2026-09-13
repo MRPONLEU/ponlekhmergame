@@ -2,7 +2,6 @@ const fs = require('fs');
 let code = fs.readFileSync('src/components/MathTugOfWar.tsx', 'utf8');
 const target = `            </button>
           </div>
-
             {/* Background Lines & Markers */}`;
 const replace = `            </button>
           </div>

@@ -65,12 +65,22 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
     return topics.find(t => t.id === selectedTopicId) || topics[0] || DEFAULT_TOPICS[0];
   }, [topics, selectedTopicId]);
 
-  const availableQuizQuestions = useMemo(() => {
-    return currentTopic?.quizQuestions || [];
-  }, [currentTopic]);
+  const [quizSeed, setQuizSeed] = useState<number>(0);
 
-  const [currentQuizIndex, setCurrentQuizIndex] = useState<number>(0);
-  const currentQuizQuestion = availableQuizQuestions[currentQuizIndex] || null;
+  const availableQuizQuestions = useMemo(() => {
+    const questions = [...(currentTopic?.quizQuestions || [])];
+    // Fisher-Yates shuffle algorithm to randomise question order
+    for (let i = questions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [questions[i], questions[j]] = [questions[j], questions[i]];
+    }
+    return questions;
+  }, [currentTopic, quizSeed]);
+
+  const [t1QuizIndex, setT1QuizIndex] = useState<number>(0);
+  const [t2QuizIndex, setT2QuizIndex] = useState<number>(1);
+  const t1QuizQuestion = availableQuizQuestions[t1QuizIndex] || null;
+  const t2QuizQuestion = availableQuizQuestions[t2QuizIndex] || null;
 
   // Sound & Screen & Language controls
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
@@ -84,13 +94,19 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('medium');
   const [targetWinPulls, setTargetWinPulls] = useState<number>(6); // 6 pulls ahead wins
   const [winByPullGoal] = useState<boolean>(true);
+  
+  // Timer settings
+  const [matchDuration, setMatchDuration] = useState<number>(180); // 0 means infinite, otherwise seconds
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
 
   // Gameplay State
   const [pullBalance, setPullBalance] = useState<number>(0); // -target to +target
   const [winner, setWinner] = useState<'team1' | 'team2' | 'draw' | null>(null);
 
-  // Single Shared Question for both teams
-  const [currentQuestion, setCurrentQuestion] = useState<MathQuestion | null>(null);
+  // Separate questions for each team
+  const [t1Question, setT1Question] = useState<MathQuestion | null>(null);
+  const [t2Question, setT2Question] = useState<MathQuestion | null>(null);
   const [lastWinnerTeam, setLastWinnerTeam] = useState<'team1' | 'team2' | null>(null);
 
   // Team 1 State (Blue / Left)
@@ -247,9 +263,15 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
     setT2Locked(false);
     setLastPullTeam(null);
     setLastWinnerTeam(null);
-    setCurrentQuestion(generateQuestion());
-    setCurrentQuizIndex(0);
-  }, [generateQuestion]);
+    setT1Question(generateQuestion());
+    setT2Question(generateQuestion());
+    setT1QuizIndex(0);
+    setT2QuizIndex(1);
+    setQuizSeed(prev => prev + 1);
+    
+    setTimeLeft(matchDuration);
+    setIsTimerRunning(true);
+  }, [generateQuestion, matchDuration]);
 
   // Initial question on mount
   useEffect(() => {
@@ -290,13 +312,37 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
     }
   };
 
+  // Timer Effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isTimerRunning && timeLeft > 0 && !winner) {
+      interval = setInterval(() => {
+        setTimeLeft((prev) => prev - 1);
+      }, 1000);
+    } else if (isTimerRunning && timeLeft === 0 && !winner && matchDuration > 0) {
+      setIsTimerRunning(false);
+      // Time is up, determine winner by pull balance
+      if (pullBalance < 0) {
+        setWinner('team1');
+        triggerWinCelebration('team1');
+      } else if (pullBalance > 0) {
+        setWinner('team2');
+        triggerWinCelebration('team2');
+      } else {
+        setWinner('draw');
+        if (soundEnabled) playSuccessSound(); // maybe a draw sound
+      }
+    }
+    return () => clearInterval(interval);
+  }, [isTimerRunning, timeLeft, winner, pullBalance, matchDuration, soundEnabled]);
+
   // Submit Answer for Team 1 in Quiz Mode (ក, ខ, គ, ឃ => 0, 1, 2, 3)
   const submitQuizTeam1 = (choiceIdx: number) => {
-    if (winner || t1Locked || !currentQuizQuestion) return;
+    if (winner || t1Locked || !t1QuizQuestion) return;
     if (soundEnabled) playClickSound();
     setT1Choice(choiceIdx);
 
-    if (choiceIdx === currentQuizQuestion.answerIndex) {
+    if (choiceIdx === t1QuizQuestion.answerIndex) {
       if (soundEnabled) playSuccessSound();
       setT1Score(prev => prev + 1);
       setT1SuccessFlash(true);
@@ -311,9 +357,8 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
         setT1SuccessFlash(false);
         setLastWinnerTeam(null);
         setT1Choice(null);
-        setT2Choice(null);
         if (availableQuizQuestions.length > 0) {
-          setCurrentQuizIndex(prev => (prev + 1) % availableQuizQuestions.length);
+          setT1QuizIndex(prev => (prev + 2) % availableQuizQuestions.length);
         }
       }, 850);
     } else {
@@ -330,11 +375,11 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
 
   // Submit Answer for Team 2 in Quiz Mode (ក, ខ, គ, ឃ => 0, 1, 2, 3)
   const submitQuizTeam2 = (choiceIdx: number) => {
-    if (winner || t2Locked || !currentQuizQuestion) return;
+    if (winner || t2Locked || !t2QuizQuestion) return;
     if (soundEnabled) playClickSound();
     setT2Choice(choiceIdx);
 
-    if (choiceIdx === currentQuizQuestion.answerIndex) {
+    if (choiceIdx === t2QuizQuestion.answerIndex) {
       if (soundEnabled) playSuccessSound();
       setT2Score(prev => prev + 1);
       setT2SuccessFlash(true);
@@ -348,10 +393,9 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
       setTimeout(() => {
         setT2SuccessFlash(false);
         setLastWinnerTeam(null);
-        setT1Choice(null);
         setT2Choice(null);
         if (availableQuizQuestions.length > 0) {
-          setCurrentQuizIndex(prev => (prev + 1) % availableQuizQuestions.length);
+          setT2QuizIndex(prev => (prev + 2) % availableQuizQuestions.length);
         }
       }, 850);
     } else {
@@ -368,13 +412,13 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
 
   // Submit Answer for Team 1 (Left / Blue)
   const submitTeam1 = () => {
-    if (!currentQuestion || winner) return;
+    if (!t2Question || winner) return;
     const raw = t1Input.trim();
     if (!raw) return;
     const userVal = parseFloat(raw);
     if (isNaN(userVal)) return;
 
-    if (Math.abs(userVal - currentQuestion.answer) < 0.001) {
+    if (Math.abs(userVal - t2Question.answer) < 0.001) {
       if (soundEnabled) playSuccessSound();
       setT1Score(prev => prev + 1);
       setT1SuccessFlash(true);
@@ -389,7 +433,7 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
 
       setT1Input('');
       setT2Input('');
-      setCurrentQuestion(generateQuestion());
+      setT1Question(generateQuestion());
     } else {
       if (soundEnabled) playFailSound();
       setT1Shake(true);
@@ -400,13 +444,13 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
 
   // Submit Answer for Team 2 (Right / Red)
   const submitTeam2 = () => {
-    if (!currentQuestion || winner) return;
+    if (!t2Question || winner) return;
     const raw = t2Input.trim();
     if (!raw) return;
     const userVal = parseFloat(raw);
     if (isNaN(userVal)) return;
 
-    if (Math.abs(userVal - currentQuestion.answer) < 0.001) {
+    if (Math.abs(userVal - t2Question.answer) < 0.001) {
       if (soundEnabled) playSuccessSound();
       setT2Score(prev => prev + 1);
       setT2SuccessFlash(true);
@@ -421,7 +465,7 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
 
       setT1Input('');
       setT2Input('');
-      setCurrentQuestion(generateQuestion());
+      setT2Question(generateQuestion());
     } else {
       if (soundEnabled) playFailSound();
       setT2Shake(true);
@@ -565,7 +609,7 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isSettingsOpen, isTopicModalOpen, winner, t1Input, t2Input, currentQuestion, gameMode, currentQuizQuestion, t1Locked, t2Locked, isExpandedFullscreen]);
+  }, [isSettingsOpen, isTopicModalOpen, winner, t1Input, t2Input, t1Question, t2Question, gameMode, t1QuizQuestion, t2QuizQuestion, t1Locked, t2Locked, isExpandedFullscreen]);
 
   // Fullscreen & Expanded Mode toggle (Hides Nav, Maximizes Playing Arena)
   const toggleExpandedFullscreen = useCallback(() => {
@@ -709,17 +753,20 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
             </button>
           </div>
 
-          {/* Center Title */}
+          {/* Center Title & Timer */}
           <div className="flex flex-col items-center gap-0.5 text-center">
             <h1 className="text-lg sm:text-xl md:text-2xl font-black text-indigo-900 tracking-tight flex items-center justify-center gap-2">
               <span>{gameMode === 'quiz' ? `ទាញព្រ័ត្រ ៖ ${currentTopic?.name || 'សំណួរពហុជម្រើស'}` : 'ទាញព្រ័ត្រ គណិតវិទ្យា'}</span>
             </h1>
-            <span className="text-[11px] font-bold text-slate-500 hidden sm:inline">
-              {gameMode === 'quiz' 
-                ? `សំណួរពហុជម្រើស (${availableQuizQuestions.length} សំណួរ)` 
-                : `ប្រមាណវិធី ${operation === 'mul' ? 'គុណ (×)' : operation === 'add' ? 'បូក (+)' : operation === 'sub' ? 'ដក (-)' : operation === 'div' ? 'ចែក (÷)' : operation === 'decimal' ? 'ទសភាគ' : 'ចម្រុះ'}`
-              }
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold text-slate-500 hidden sm:inline">
+                {gameMode === 'quiz' 
+                  ? `សំណួរពហុជម្រើស (${availableQuizQuestions.length} សំណួរ)` 
+                  : `ប្រមាណវិធី ${operation === 'mul' ? 'គុណ (×)' : operation === 'add' ? 'បូក (+)' : operation === 'sub' ? 'ដក (-)' : operation === 'div' ? 'ចែក (÷)' : operation === 'decimal' ? 'ទសភាគ' : 'ចម្រុះ'}`
+                }
+              </span>
+
+            </div>
           </div>
 
           {/* Right Toolbar - Settings button */}
@@ -752,6 +799,40 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
               : 'flex-1 min-h-[280px] sm:min-h-[340px] p-0'
           }`}
         >
+
+
+          {/* Giant Timer always visible at the top of arena */}
+          {matchDuration > 0 && (
+            <div className="absolute top-2 sm:top-4 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center pointer-events-none">
+               <div className={`flex items-center gap-2 px-5 py-2 rounded-2xl shadow-lg border-2 backdrop-blur-md transition-colors ${
+                 timeLeft <= 10 && isTimerRunning 
+                   ? 'bg-rose-600/90 text-white border-rose-400 animate-pulse shadow-rose-500/50' 
+                   : 'bg-slate-900/80 text-white border-slate-700'
+               }`}>
+                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`${timeLeft <= 10 ? 'text-white' : 'text-emerald-400'}`}><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                 <span className="text-xl sm:text-3xl font-black font-mono tracking-widest drop-shadow-md">
+                   {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+                 </span>
+               </div>
+            </div>
+          )}
+
+          {/* Giant Timer always visible at the top of arena */}
+          {matchDuration > 0 && (
+            <div className="absolute top-2 sm:top-4 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center pointer-events-none">
+               <div className={`flex items-center gap-2 px-5 py-2 rounded-2xl shadow-lg border-2 backdrop-blur-md transition-colors ${
+                 timeLeft <= 10 && isTimerRunning 
+                   ? 'bg-rose-600/90 text-white border-rose-400 animate-pulse shadow-rose-500/50' 
+                   : 'bg-slate-900/80 text-white border-slate-700'
+               }`}>
+                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`${timeLeft <= 10 ? 'text-white' : 'text-emerald-400'}`}><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                 <span className="text-xl sm:text-3xl font-black font-mono tracking-widest drop-shadow-md">
+                   {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+                 </span>
+               </div>
+            </div>
+          )}
+
           {/* Dedicated Full Screen Button (Icon full Screen ដាច់ដោយឡែក) */}
           <div className="absolute top-2.5 right-2.5 sm:top-3.5 sm:right-3.5 z-30 flex items-center gap-1.5">
             {isExpandedFullscreen && (
@@ -786,74 +867,25 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
               )}
             </button>
           </div>
-          {/* Arena Top: Central Big Exercise Card */}
-          <div className="flex items-center justify-center pb-2 pt-2 sm:pt-4 px-2 sm:px-4 border-b border-slate-100 z-10 relative bg-white/50 backdrop-blur-sm">
-            {/* Central Big Exercise Card (ផ្ទាំងលំហាត់ ឬ សំណួរពហុជម្រើស) */}
-            <motion.div 
-              key={gameMode === 'math' ? (currentQuestion ? currentQuestion.text : 'empty') : (currentQuizQuestion ? `quiz-${currentQuizIndex}` : 'empty-quiz')}
-              initial={{ scale: 0.94, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-              className={`w-full max-w-4xl lg:max-w-5xl bg-gradient-to-b from-white via-slate-50/60 to-indigo-50/20 border-2 rounded-2xl sm:rounded-3xl py-2 sm:py-2.5 px-3 sm:px-6 text-center shadow-md relative overflow-hidden transition-all ${
-                lastWinnerTeam === 'team1' 
-                  ? 'border-sky-500 shadow-sky-200 ring-4 ring-sky-200' 
-                  : lastWinnerTeam === 'team2'
-                  ? 'border-rose-500 shadow-rose-200 ring-4 ring-rose-200'
-                  : 'border-indigo-200'
-              }`}
-            >
-              {/* Math vs Quiz Question Body */}
-              {gameMode === 'math' ? (
-                /* Big Question Formula */
-                <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 tracking-wider font-mono drop-shadow-xs py-1">
-                  {currentQuestion ? currentQuestion.text : '...'}
-                </div>
-              ) : (
-                /* Multiple Choice: STRICTLY 1 SINGLE LINE WITHOUT WRAPPING (សរសេរតែ ១ជួរ មិនធ្លាក់ចុះក្រោម) */
-                <div className="flex flex-col items-center justify-center py-1 sm:py-1.5 px-1 min-h-[48px] sm:min-h-[56px] w-full overflow-hidden">
-                  {currentQuizQuestion ? (
-                    <h2 
-                      title={currentQuizQuestion.question}
-                      className="w-full text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-black text-slate-900 tracking-normal text-center drop-shadow-2xs whitespace-nowrap overflow-hidden text-ellipsis px-1"
-                    >
-                      {currentQuizQuestion.question}
-                    </h2>
-                  ) : (
-                    <div className="py-2 text-center">
-                      <FileQuestion size={30} className="mx-auto text-amber-500 mb-1" />
-                      <p className="font-bold text-slate-600 text-xs sm:text-sm mb-2">មិនទាន់មានសំណួរ MCQ ក្នុងប្រធានបទនេះទេ</p>
-                      <button
-                        type="button"
-                        onClick={() => setIsTopicModalOpen(true)}
-                        className="px-3.5 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-xl cursor-pointer shadow-xs"
-                      >
-                        ប្ដូរប្រធានបទដែលមានសំណួរ
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Flash Banner when a team answers correctly */}
-              <AnimatePresence>
-                {lastWinnerTeam && (
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0 }}
-                    className={`absolute inset-0 flex items-center justify-center font-black text-lg sm:text-2xl text-white backdrop-blur-xs z-10 ${
-                      lastWinnerTeam === 'team1' ? 'bg-sky-600/95' : 'bg-rose-600/95'
-                    }`}
-                  >
-                    {lastWinnerTeam === 'team1' ? '🎉 ក្រុមទី ១ ឆ្លើយត្រូវ! (+1)' : '🎉 ក្រុមទី ២ ឆ្លើយត្រូវ! (+1)'}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          </div>
 
           {/* Tug of War Interactive Stage */}
           <div className="flex-1 flex items-center justify-center relative min-h-[170px] sm:min-h-[220px] md:min-h-[260px] overflow-hidden">
+            {/* Flash Banner when a team answers correctly */}
+            <AnimatePresence>
+              {lastWinnerTeam && (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9, y: -20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className={`absolute top-2 left-1/2 -translate-x-1/2 font-black text-sm sm:text-base md:text-lg text-white px-4 py-1.5 rounded-full shadow-lg z-50 ${
+                    lastWinnerTeam === 'team1' ? 'bg-sky-600/90' : 'bg-rose-600/90'
+                  }`}
+                >
+                  {lastWinnerTeam === 'team1' ? '🎉 ក្រុមទី ១ ឆ្លើយត្រូវ! (+1)' : '🎉 ក្រុមទី ២ ឆ្លើយត្រូវ! (+1)'}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Custom Background Image */}
             <div 
               className="absolute inset-0 z-0 bg-cover bg-bottom bg-no-repeat pointer-events-none" 
@@ -925,54 +957,18 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
               transition={{ type: 'spring', stiffness: 280, damping: 24 }}
               className="relative z-10 flex items-center justify-center w-full max-w-[850px] px-2 select-none"
             >
-              {/* Inner Continuous Tug of War Animation: Purely horizontal forward and backward tugging (ទៅមុខ មកក្រោយ ទៅមក ដដែលៗ គ្មានចលនាលើក្រោម) */}
-              <motion.div
-                animate={winner ? {
-                  x: 0,
-                  y: 0,
-                  rotate: 0,
-                  scale: 1
-                } : {
-                  // Strictly horizontal back-and-forth tugging motion (pull left, pull right)
-                  x: [-20, 20, -20],
-                  y: 0,
-                  rotate: 0,
-                  scale: 1
-                }}
-                transition={winner ? {
-                  duration: 0.3
-                } : {
-                  x: { repeat: Infinity, duration: 1.1, ease: "easeInOut" }
-                }}
-                className="relative w-full flex items-center justify-center"
-              >
+              {/* Tug of War Image Container (Static position without idle swaying since the GIF has built-in animation) */}
+              <div className="relative w-full flex items-center justify-center">
                 {/* Student Tug of War Image */}
                 <img 
-                  src="/images/images.png" 
+                  src="/images/images3.gif" 
                   alt="សិស្សទាញព្រ័ត្រ (Student Tug of War)" 
                   className={`w-full max-h-[160px] sm:max-h-[210px] md:max-h-[250px] object-contain select-none pointer-events-none transition-all duration-300 ${
                     lastWinnerTeam ? 'drop-shadow-xl brightness-105' : 'drop-shadow-md'
                   }`}
                   draggable={false}
                 />
-
-                {/* Center Red Ribbon Knot on Rope */}
-                <div className="absolute left-1/2 top-[52%] -translate-x-1/2 -translate-y-1/2 pointer-events-none flex flex-col items-center z-20">
-                  {/* Fluttering Red Ribbon Cloth */}
-                  <motion.div 
-                    animate={{ 
-                      rotate: [-10, 10, -10],
-                      skewX: [-6, 6, -6]
-                    }}
-                    transition={{ repeat: Infinity, duration: 1.1, ease: "easeInOut" }}
-                    className="w-4 h-6 sm:w-5 sm:h-8 bg-gradient-to-b from-rose-500 to-red-600 rounded-b-md shadow-md border-t-2 border-amber-300 relative flex items-center justify-center"
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-300 shadow-xs" />
-                  </motion.div>
-                  {/* Downward Indicator Arrow */}
-                  <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[6px] border-t-red-600 drop-shadow-xs -mt-0.5" />
-                </div>
-              </motion.div>
+              </div>
 
               {/* Team 1 Strain / Dust Puffs & Muscle Sparks (Left) */}
               <AnimatePresence>
@@ -1118,10 +1114,10 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
             id="panel-team-1"
             className="bg-sky-50/80 border-2 border-sky-200/90 rounded-2xl sm:rounded-3xl p-2.5 sm:p-3.5 shadow-xs flex flex-col justify-between transition-all"
           >
-            {/* Header Tag & Answer Display in 1 compact row */}
-            <div className="flex items-center gap-2 sm:gap-3 mb-2">
+            {/* Header Tag, Question, & Answer Display in 1 row */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 mb-2">
               {/* Team 1 Badge */}
-              <div className="bg-sky-600 text-white font-bold py-1.5 px-3 sm:px-4 rounded-xl flex items-center gap-2 shadow-xs shrink-0">
+              <div className="bg-sky-600 text-white font-bold py-1.5 px-3 sm:px-4 rounded-xl flex items-center justify-center gap-2 shadow-xs shrink-0">
                 <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
                 <span className="text-sm sm:text-base font-black tracking-wide whitespace-nowrap">ក្រុមទី ១</span>
                 <span className="bg-white text-sky-700 font-black text-xs sm:text-sm px-2.5 py-0.5 rounded-full shadow-inner ml-1">
@@ -1129,7 +1125,7 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
                 </span>
               </div>
 
-              {/* Answer Display Box (ប្រអប់ចម្លើយ) */}
+              {/* Individual Question Card */}
               <motion.div 
                 animate={
                   t1Shake 
@@ -1138,32 +1134,42 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
                     ? { scale: [1, 1.05, 1], backgroundColor: ['#ffffff', '#e0f2fe', '#ffffff'] }
                     : {}
                 }
-                className={`flex-1 min-h-[44px] sm:min-h-[48px] bg-white border-2 rounded-xl py-1 px-3 text-center flex items-center justify-center transition-colors shadow-xs ${
+                className={`border-2 rounded-xl py-1 px-3 text-center shadow-xs flex-1 flex flex-col items-center justify-center min-h-[44px] sm:min-h-[48px] transition-colors ${
                   t1Shake 
-                    ? 'border-rose-400 text-rose-600 bg-rose-50' 
+                    ? 'border-rose-400 bg-rose-50' 
                     : t1SuccessFlash
-                    ? 'border-sky-500 ring-2 ring-sky-300'
-                    : 'border-slate-200/90 text-slate-800'
+                    ? 'border-sky-500 bg-sky-50 ring-2 ring-sky-300'
+                    : 'border-sky-100 bg-white'
                 }`}
               >
                 {gameMode === 'math' ? (
-                  <span className={`text-2xl sm:text-3xl font-black font-mono tracking-widest ${t1Input ? 'text-slate-800' : 'text-slate-300'}`}>
-                    {t1Input || 0}
+                  <span className="text-xl sm:text-2xl font-black font-mono tracking-wider text-slate-800 drop-shadow-xs flex items-center justify-center flex-wrap gap-2">
+                    <span>{t1Question ? t1Question.text.replace('?', '') : '...'}</span>
+                    <span className={`min-w-[40px] px-2 py-0.5 rounded border-b-4 ${
+                      t1Shake ? 'border-rose-500 text-rose-600 bg-rose-100/50' 
+                      : t1SuccessFlash ? 'border-emerald-500 text-emerald-600 bg-emerald-100/50' 
+                      : t1Input ? 'border-sky-400 text-sky-700 bg-sky-50'
+                      : 'border-slate-300 text-slate-400 bg-slate-50'
+                    }`}>
+                      {t1Input || '?'}
+                    </span>
                   </span>
                 ) : (
-                  <span className={`font-black ${
-                    t1Locked 
-                      ? 'text-rose-600 text-xs sm:text-sm animate-pulse' 
-                      : t1Choice !== null 
-                      ? 'text-sky-700 text-lg sm:text-xl' 
-                      : 'text-slate-400 text-xs sm:text-sm'
-                  }`}>
-                    {t1Locked 
-                      ? '❌ ចម្លើយមិនត្រឹមត្រូវ! (រង់ចាំ...)' 
-                      : t1Choice !== null 
-                      ? `ជម្រើស [ ${['ក', 'ខ', 'គ', 'ឃ'][t1Choice]} ]` 
-                      : 'ចុចជ្រើសរើស ក, ខ, គ ឬ ឃ'}
-                  </span>
+                  <div className="flex flex-col items-center">
+                    <span className="text-sm sm:text-base font-bold text-slate-800 line-clamp-2">
+                      {t1QuizQuestion ? t1QuizQuestion.question : 'មិនទាន់មានសំណួរ'}
+                    </span>
+                    {t1Locked && (
+                       <span className="text-rose-600 text-xs sm:text-sm font-black animate-pulse mt-1">
+                         ❌ ចម្លើយមិនត្រឹមត្រូវ! រង់ចាំបន្តិច...
+                       </span>
+                    )}
+                    {!t1Locked && t1Choice !== null && (
+                       <span className="text-sky-700 text-sm sm:text-base font-black mt-1">
+                         បានជ្រើសរើស៖ [ ${['ក', 'ខ', 'គ', 'ឃ'][t1Choice]} ]
+                       </span>
+                    )}
+                  </div>
                 )}
               </motion.div>
             </div>
@@ -1239,7 +1245,7 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
               <>
                 {/* 4 Rich Quiz Choice Cards: [ ក ] [ ខ ] [ គ ] [ ឃ ] with actual answer text */}
                 <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
-                  {currentQuizQuestion?.options.map((optText, optIdx) => {
+                  {t2QuizQuestion?.options.map((optText, optIdx) => {
                     const khmerLabels = ['ក', 'ខ', 'គ', 'ឃ'];
                     const keyHints = ['A / 1', 'B / 2', 'C / 3', 'D / 4'];
                     const isSelected = t1Choice === optIdx;
@@ -1247,7 +1253,7 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
                       <button
                         key={`t1-choice-${optIdx}`}
                         type="button"
-                        disabled={t1Locked || !currentQuizQuestion}
+                        disabled={t1Locked || !t2QuizQuestion}
                         onClick={() => submitQuizTeam1(optIdx)}
                         className={`p-2 sm:p-2.5 rounded-2xl border-2 transition-all flex items-center gap-2 sm:gap-2.5 text-left cursor-pointer select-none shadow-xs active:scale-[0.98] min-h-[54px] sm:min-h-[62px] ${
                           t1Locked
@@ -1295,10 +1301,10 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
             id="panel-team-2"
             className="bg-rose-50/80 border-2 border-rose-200/90 rounded-2xl sm:rounded-3xl p-2.5 sm:p-3.5 shadow-xs flex flex-col justify-between transition-all"
           >
-            {/* Header Tag & Answer Display in 1 compact row */}
-            <div className="flex items-center gap-2 sm:gap-3 mb-2">
+            {/* Header Tag, Question, & Answer Display in 1 row */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 mb-2">
               {/* Team 2 Badge */}
-              <div className="bg-rose-600 text-white font-bold py-1.5 px-3 sm:px-4 rounded-xl flex items-center gap-2 shadow-xs shrink-0">
+              <div className="bg-rose-600 text-white font-bold py-1.5 px-3 sm:px-4 rounded-xl flex items-center justify-center gap-2 shadow-xs shrink-0">
                 <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
                 <span className="text-sm sm:text-base font-black tracking-wide whitespace-nowrap">ក្រុមទី ២</span>
                 <span className="bg-white text-rose-700 font-black text-xs sm:text-sm px-2.5 py-0.5 rounded-full shadow-inner ml-1">
@@ -1306,7 +1312,7 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
                 </span>
               </div>
 
-              {/* Answer Display Box (ប្រអប់ចម្លើយ) */}
+              {/* Individual Question Card */}
               <motion.div 
                 animate={
                   t2Shake 
@@ -1315,32 +1321,42 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
                     ? { scale: [1, 1.05, 1], backgroundColor: ['#ffffff', '#ffe4e6', '#ffffff'] }
                     : {}
                 }
-                className={`flex-1 min-h-[44px] sm:min-h-[48px] bg-white border-2 rounded-xl py-1 px-3 text-center flex items-center justify-center transition-colors shadow-xs ${
+                className={`border-2 rounded-xl py-1 px-3 text-center shadow-xs flex-1 flex flex-col items-center justify-center min-h-[44px] sm:min-h-[48px] transition-colors ${
                   t2Shake 
-                    ? 'border-rose-400 text-rose-600 bg-rose-50' 
+                    ? 'border-rose-400 bg-rose-50' 
                     : t2SuccessFlash
-                    ? 'border-rose-500 ring-2 ring-rose-300'
-                    : 'border-slate-200/90 text-slate-800'
+                    ? 'border-rose-500 bg-rose-50 ring-2 ring-rose-300'
+                    : 'border-rose-100 bg-white'
                 }`}
               >
                 {gameMode === 'math' ? (
-                  <span className={`text-2xl sm:text-3xl font-black font-mono tracking-widest ${t2Input ? 'text-slate-800' : 'text-slate-300'}`}>
-                    {t2Input || 0}
+                  <span className="text-xl sm:text-2xl font-black font-mono tracking-wider text-slate-800 drop-shadow-xs flex items-center justify-center flex-wrap gap-2">
+                    <span>{t2Question ? t2Question.text.replace('?', '') : '...'}</span>
+                    <span className={`min-w-[40px] px-2 py-0.5 rounded border-b-4 ${
+                      t2Shake ? 'border-rose-500 text-rose-600 bg-rose-100/50' 
+                      : t2SuccessFlash ? 'border-emerald-500 text-emerald-600 bg-emerald-100/50' 
+                      : t2Input ? 'border-rose-400 text-rose-700 bg-rose-50'
+                      : 'border-slate-300 text-slate-400 bg-slate-50'
+                    }`}>
+                      {t2Input || '?'}
+                    </span>
                   </span>
                 ) : (
-                  <span className={`font-black ${
-                    t2Locked 
-                      ? 'text-rose-600 text-xs sm:text-sm animate-pulse' 
-                      : t2Choice !== null 
-                      ? 'text-rose-700 text-lg sm:text-xl' 
-                      : 'text-slate-400 text-xs sm:text-sm'
-                  }`}>
-                    {t2Locked 
-                      ? '❌ ចម្លើយមិនត្រឹមត្រូវ! (រង់ចាំ...)' 
-                      : t2Choice !== null 
-                      ? `ជម្រើស [ ${['ក', 'ខ', 'គ', 'ឃ'][t2Choice]} ]` 
-                      : 'ចុចជ្រើសរើស ក, ខ, គ ឬ ឃ'}
-                  </span>
+                  <div className="flex flex-col items-center">
+                    <span className="text-sm sm:text-base font-bold text-slate-800 line-clamp-2">
+                      {t2QuizQuestion ? t2QuizQuestion.question : 'មិនទាន់មានសំណួរ'}
+                    </span>
+                    {t2Locked && (
+                       <span className="text-rose-600 text-xs sm:text-sm font-black animate-pulse mt-1">
+                         ❌ ចម្លើយមិនត្រឹមត្រូវ! រង់ចាំបន្តិច...
+                       </span>
+                    )}
+                    {!t2Locked && t2Choice !== null && (
+                       <span className="text-rose-700 text-sm sm:text-base font-black mt-1">
+                         បានជ្រើសរើស៖ [ ${['ក', 'ខ', 'គ', 'ឃ'][t2Choice]} ]
+                       </span>
+                    )}
+                  </div>
                 )}
               </motion.div>
             </div>
@@ -1416,7 +1432,7 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
               <>
                 {/* 4 Rich Quiz Choice Cards: [ ក ] [ ខ ] [ គ ] [ ឃ ] with actual answer text */}
                 <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
-                  {currentQuizQuestion?.options.map((optText, optIdx) => {
+                  {t2QuizQuestion?.options.map((optText, optIdx) => {
                     const khmerLabels = ['ក', 'ខ', 'គ', 'ឃ'];
                     const keyHints = ['Num 1 / ←', 'Num 2 / ↑', 'Num 3 / ↓', 'Num 4 / →'];
                     const isSelected = t2Choice === optIdx;
@@ -1424,7 +1440,7 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
                       <button
                         key={`t2-choice-${optIdx}`}
                         type="button"
-                        disabled={t2Locked || !currentQuizQuestion}
+                        disabled={t2Locked || !t2QuizQuestion}
                         onClick={() => submitQuizTeam2(optIdx)}
                         className={`p-2 sm:p-2.5 rounded-2xl border-2 transition-all flex items-center gap-2 sm:gap-2.5 text-left cursor-pointer select-none shadow-xs active:scale-[0.98] min-h-[54px] sm:min-h-[62px] ${
                           t2Locked
@@ -1717,6 +1733,35 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
                   </div>
                 </div>
 
+                {/* Match Duration Settings */}
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    កំណត់ពេលប្រកួត (Match Duration)
+                  </label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[
+                      { val: 0, label: 'គ្មានកំណត់' },
+                      { val: 60, label: '១ នាទី' },
+                      { val: 180, label: '៣ នាទី' },
+                      { val: 300, label: '៥ នាទី' }
+                    ].map(opt => (
+                      <button
+                        key={opt.val}
+                        type="button"
+                        onClick={() => setMatchDuration(opt.val)}
+                        className={`py-2 px-2.5 rounded-xl font-extrabold text-[11px] sm:text-xs border transition-all cursor-pointer ${
+                          matchDuration === opt.val 
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs' 
+                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* 5. Sound, Language & Screen System */}
                 <div className="pt-3 border-t border-slate-100 space-y-3">
                   <label className="block text-xs font-black text-slate-600 uppercase tracking-wider">
@@ -1858,7 +1903,8 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
                         if (soundEnabled) playClickSound();
                         setSelectedTopicId(topic.id);
                         onSelectTopic?.(topic.id);
-                        setCurrentQuizIndex(0);
+                        setT1QuizIndex(0);
+                        setT2QuizIndex(1);
                         setT1Choice(null);
                         setT2Choice(null);
                         setT1Locked(false);
