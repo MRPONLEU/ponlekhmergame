@@ -1245,7 +1245,7 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
               <>
                 {/* 4 Rich Quiz Choice Cards: [ ក ] [ ខ ] [ គ ] [ ឃ ] with actual answer text */}
                 <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
-                  {t2QuizQuestion?.options.map((optText, optIdx) => {
+                  {t1QuizQuestion?.options.map((optText, optIdx) => {
                     const khmerLabels = ['ក', 'ខ', 'គ', 'ឃ'];
                     const keyHints = ['A / 1', 'B / 2', 'C / 3', 'D / 4'];
                     const isSelected = t1Choice === optIdx;
@@ -1253,7 +1253,7 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
                       <button
                         key={`t1-choice-${optIdx}`}
                         type="button"
-                        disabled={t1Locked || !t2QuizQuestion}
+                        disabled={t1Locked || !t1QuizQuestion}
                         onClick={() => submitQuizTeam1(optIdx)}
                         className={`p-2 sm:p-2.5 rounded-2xl border-2 transition-all flex items-center gap-2 sm:gap-2.5 text-left cursor-pointer select-none shadow-xs active:scale-[0.98] min-h-[54px] sm:min-h-[62px] ${
                           t1Locked
