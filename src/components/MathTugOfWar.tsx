@@ -412,13 +412,13 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
 
   // Submit Answer for Team 1 (Left / Blue)
   const submitTeam1 = () => {
-    if (!t2Question || winner) return;
+    if (!t1Question || winner) return;
     const raw = t1Input.trim();
     if (!raw) return;
     const userVal = parseFloat(raw);
     if (isNaN(userVal)) return;
 
-    if (Math.abs(userVal - t2Question.answer) < 0.001) {
+    if (Math.abs(userVal - t1Question.answer) < 0.001) {
       if (soundEnabled) playSuccessSound();
       setT1Score(prev => prev + 1);
       setT1SuccessFlash(true);
@@ -432,7 +432,6 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
       checkPullWin(newBalance);
 
       setT1Input('');
-      setT2Input('');
       setT1Question(generateQuestion());
     } else {
       if (soundEnabled) playFailSound();
@@ -463,7 +462,6 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
       setPullBalance(newBalance);
       checkPullWin(newBalance);
 
-      setT1Input('');
       setT2Input('');
       setT2Question(generateQuestion());
     } else {

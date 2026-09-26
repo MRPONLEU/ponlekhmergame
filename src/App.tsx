@@ -179,6 +179,7 @@ export default function App() {
         return (
           <TeamCards 
             words={activeWords} 
+            questions={activeTopic.quizQuestions}
             topicName={activeTopic.name}
             onBack={() => handleNavigate('dashboard')} 
           />

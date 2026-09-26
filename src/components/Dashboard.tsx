@@ -113,10 +113,10 @@ export default function Dashboard({
     {
       id: 'team-cards' as ViewState,
       title: 'ល្បែងបើកកាត',
-      subtitle: 'ល្បែងប្រកួតជាក្រុម បើកកាតលេខដើម្បីឆ្លើយពាក្យខ្មែរ',
+      subtitle: 'ល្បែងប្រកួតជាក្រុម បើកកាតដើម្បីឆ្លើយពាក្យ អានល្បះ សំណួរពហុជម្រើស និងផ្គុំពាក្យ',
       icon: Gamepad2,
       iconBoxBg: 'bg-blue-50 text-blue-600',
-      badge: 'លេងជាក្រុម'
+      badge: 'លេងជាក្រុម • ពហុជម្រើស'
     },
     {
       id: 'word-puzzle' as ViewState,

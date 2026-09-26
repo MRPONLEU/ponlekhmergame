@@ -1273,7 +1273,7 @@ export default function Quiz({ words, questions: propQuestions, topicName, onUpd
               ref={quizRef}
               className="w-full h-full flex-1 flex flex-col justify-stretch min-h-0"
             >
-              <div className={`${quizTheme === 'purple' ? 'bg-gradient-to-br from-purple-700 via-indigo-800 to-purple-900 border-2 border-purple-400/30 text-white' : 'bg-white border-border-beige'} rounded-2xl sm:rounded-3xl md:rounded-[32px] p-3 sm:p-5 md:p-6 flex flex-col justify-between shadow-2xl relative w-full h-full flex-1 min-h-[540px] overflow-hidden`}>
+              <div className={`${quizTheme === 'purple' ? 'bg-gradient-to-br from-[#6b21a8] via-[#4c1d95] to-[#3b0764] border-2 border-purple-400/30 text-white' : 'bg-white border-border-beige'} rounded-2xl sm:rounded-3xl md:rounded-[32px] p-3 sm:p-5 md:p-6 flex flex-col justify-between shadow-2xl relative w-full h-full flex-1 min-h-[540px] overflow-hidden`}>
                 
                 {/* Question Index/Score Header Bar */}
                 <div className={`flex items-center justify-between font-bold tracking-wider shrink-0 ${
@@ -1370,24 +1370,24 @@ export default function Quiz({ words, questions: propQuestions, topicName, onUpd
                         // Distinct vibrant color themes for 4 options matching image.png
                         const optionThemes = [
                           {
-                            badgeBg: "bg-sky-500",
-                            border: "border-sky-300",
-                            hover: "hover:border-sky-500 hover:bg-sky-50/30",
+                            badgeBg: "bg-[#0284c7]",
+                            border: "border-[#0284c7]/40",
+                            hover: "hover:border-[#0284c7] hover:bg-sky-50/20",
                           },
                           {
-                            badgeBg: "bg-rose-500",
-                            border: "border-rose-300",
-                            hover: "hover:border-rose-500 hover:bg-rose-50/30",
+                            badgeBg: "bg-[#e11d48]",
+                            border: "border-[#e11d48]/40",
+                            hover: "hover:border-[#e11d48] hover:bg-rose-50/20",
                           },
                           {
-                            badgeBg: "bg-emerald-500",
-                            border: "border-emerald-300",
-                            hover: "hover:border-emerald-500 hover:bg-emerald-50/30",
+                            badgeBg: "bg-[#059669]",
+                            border: "border-[#059669]/40",
+                            hover: "hover:border-[#059669] hover:bg-emerald-50/20",
                           },
                           {
-                            badgeBg: "bg-amber-500",
-                            border: "border-amber-300",
-                            hover: "hover:border-amber-500 hover:bg-amber-50/30",
+                            badgeBg: "bg-[#d97706]",
+                            border: "border-[#d97706]/40",
+                            hover: "hover:border-[#d97706] hover:bg-amber-50/20",
                           },
                         ];
 

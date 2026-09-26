@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { WordItem } from '../types';
+import { WordItem, QuizQuestion } from '../types';
 import { 
   Settings, 
   RotateCcw, 
@@ -24,7 +24,8 @@ import {
   Award,
   Palette,
   Crown,
-  FileText
+  FileText,
+  CheckSquare
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -45,7 +46,7 @@ const DEFAULT_SENTENCES: WordItem[] = [
   { word: "សិស្សានុសិស្សទាំងអស់ខិតខំរៀនសូត្រដើម្បីក្លាយជាកូនល្អសិស្សល្អ។", wordType: "អត្ថបទខ្លី ៖ រឿងសិស្សល្អ", parts: [], definition: "", example: "" },
 ];
 
-export type TeamGameMode = 'puzzle' | 'reading' | 'sentence' | 'search' | 'mixed';
+export type TeamGameMode = 'puzzle' | 'reading' | 'sentence' | 'search' | 'quiz' | 'mixed';
 export type CardColorTheme = 'rainbow' | 'blue' | 'emerald' | 'amber' | 'purple' | 'rose' | 'cyan';
 
 const COLOR_STYLES: Record<string, { bg: string; border: string; shadow: string; hover: string; previewBg: string }> = {
@@ -140,15 +141,17 @@ export type SpecialCardType = 'none' | 'bonus_15' | 'bonus_25' | 'lose_10' | 'sw
 export interface GameCard {
   id: number;
   wordItem?: WordItem;
+  quizQuestion?: QuizQuestion;
   points: number;
   isOpened: boolean;
   openedByTeamId?: string;
   specialType: SpecialCardType;
-  cardMode?: 'puzzle' | 'reading' | 'sentence' | 'search';
+  cardMode?: 'puzzle' | 'reading' | 'sentence' | 'search' | 'quiz';
 }
 
 interface TeamCardsProps {
   words: WordItem[];
+  questions?: QuizQuestion[];
   topicName?: string;
   onBack: () => void;
 }
@@ -157,6 +160,67 @@ const DEFAULT_TEAMS: Team[] = [
   { id: 'team_1', name: 'ក្រុមទី១', score: 0, color: '#ec4899', bgClass: 'bg-pink-500', borderClass: 'border-pink-500', badgeBg: 'bg-rose-500' },
   { id: 'team_2', name: 'ក្រុមទី២', score: 0, color: '#3b82f6', bgClass: 'bg-blue-500', borderClass: 'border-blue-500', badgeBg: 'bg-blue-600' },
 ];
+
+// Helper to generate or format quiz questions for cards
+function getQuizQuestionsForCards(providedQuestions: QuizQuestion[] | undefined, wordsList: WordItem[], count: number): QuizQuestion[] {
+  const result: QuizQuestion[] = [];
+  const validProvided = (providedQuestions || []).filter(q => q && q.question && q.options && q.options.length >= 2);
+
+  if (validProvided.length > 0) {
+    const shuffled = [...validProvided].sort(() => Math.random() - 0.5);
+    for (let i = 0; i < count; i++) {
+      result.push(shuffled[i % shuffled.length]);
+    }
+    return result;
+  }
+
+  const validWords = wordsList.filter(w => w.word);
+  if (validWords.length === 0) {
+    const fallbackQs: QuizQuestion[] = [
+      { question: 'តើពាក្យមួយណាជាប្រធានសភាជាតិ?', options: ['សភា', 'សាលា', 'សួន', 'សត្វ'], answerIndex: 0, explanation: '' },
+      { question: 'តើពាក្យមួយណាមានន័យថា រៀនសូត្រ?', options: ['សិក្សា', 'រត់', 'លោត', 'ដើរ'], answerIndex: 0, explanation: '' },
+      { question: 'តើពាក្យមួយណាជាអក្សរកាត់?', options: ['អ.ស.ប', 'សាលា', 'មន្ទីរ', 'ផ្សារ'], answerIndex: 0, explanation: '' },
+    ];
+    for (let i = 0; i < count; i++) {
+      result.push(fallbackQs[i % fallbackQs.length]);
+    }
+    return result;
+  }
+
+  const shuffledWords = [...validWords].sort(() => Math.random() - 0.5);
+  for (let i = 0; i < count; i++) {
+    const targetWord = shuffledWords[i % shuffledWords.length];
+    const otherWords = validWords.filter(w => w.word !== targetWord.word).map(w => w.word);
+    const decoys: string[] = [];
+    while (decoys.length < 3 && otherWords.length > 0) {
+      const randIdx = Math.floor(Math.random() * otherWords.length);
+      const chosen = otherWords.splice(randIdx, 1)[0];
+      if (!decoys.includes(chosen)) decoys.push(chosen);
+    }
+    while (decoys.length < 3) {
+      decoys.push(`ជម្រើសទី ${decoys.length + 1}`);
+    }
+
+    const options = [targetWord.word, ...decoys].sort(() => Math.random() - 0.5);
+    const answerIndex = options.indexOf(targetWord.word);
+
+    let qText = `តើពាក្យមួយណាជាចម្លើយត្រឹមត្រូវ?`;
+    if (targetWord.definition) {
+      qText = `« ${targetWord.definition} » តើត្រូវនឹងពាក្យមួយណា?`;
+    } else if (targetWord.wordType) {
+      qText = `ជ្រើសរើសពាក្យត្រឹមត្រូវក្នុងប្រភេទ (${targetWord.wordType}) ៖`;
+    }
+
+    result.push({
+      question: qText,
+      options,
+      answerIndex: answerIndex >= 0 ? answerIndex : 0,
+      explanation: targetWord.example || ''
+    });
+  }
+
+  return result;
+}
 
 // Helper to split Khmer word into visual grid units (preserving co-engrossers)
 function splitKhmerWordToUnits(word: string): string[] {
@@ -180,9 +244,10 @@ interface CellCoords {
   c: number;
 }
 
-export default function TeamCards({ words, onBack }: TeamCardsProps) {
-  // Game Mode: 'puzzle' | 'reading' | 'search'
+export default function TeamCards({ words, questions, onBack }: TeamCardsProps) {
+  // Game Mode: 'puzzle' | 'reading' | 'sentence' | 'search' | 'quiz' | 'mixed'
   const [gameMode, setGameMode] = useState<TeamGameMode>('puzzle');
+  const [selectedQuizOption, setSelectedQuizOption] = useState<number | null>(null);
 
   // Game Configuration
   const [teamCount, setTeamCount] = useState<number>(2);
@@ -273,16 +338,19 @@ export default function TeamCards({ words, onBack }: TeamCardsProps) {
       }
     }
 
-    const subModes: ('puzzle' | 'reading' | 'sentence' | 'search')[] = ['puzzle', 'reading', 'sentence', 'search'];
-    const mixedModesPattern: ('puzzle' | 'reading' | 'sentence' | 'search')[] = [];
+    const subModes: ('puzzle' | 'reading' | 'sentence' | 'search' | 'quiz')[] = ['puzzle', 'reading', 'sentence', 'search', 'quiz'];
+    const mixedModesPattern: ('puzzle' | 'reading' | 'sentence' | 'search' | 'quiz')[] = [];
     for (let i = 0; i < customCardCount; i++) {
       mixedModesPattern.push(subModes[i % subModes.length]);
     }
     // Shuffle the sequence for unexpected fun in mixed mode
     mixedModesPattern.sort(() => Math.random() - 0.5);
 
+    const quizQuestionsForCards = getQuizQuestionsForCards(questions, words, customCardCount);
+
     let singleIdx = 0;
     let sentenceIdx = 0;
+    let quizIdx = 0;
 
     for (let i = 0; i < customCardCount; i++) {
       const isSurprise = surpriseSlots.has(i);
@@ -295,8 +363,13 @@ export default function TeamCards({ words, onBack }: TeamCardsProps) {
         ? mixedModesPattern[i] 
         : gameMode;
 
-      let assignedWord: WordItem;
-      if (assignedCardMode === 'sentence') {
+      let assignedWord: WordItem | undefined;
+      let assignedQuizQuestion: QuizQuestion | undefined;
+
+      if (assignedCardMode === 'quiz') {
+        assignedQuizQuestion = quizQuestionsForCards[quizIdx % quizQuestionsForCards.length];
+        quizIdx++;
+      } else if (assignedCardMode === 'sentence') {
         // Sentence mode strictly gets sentence items!
         assignedWord = shuffledSentence[sentenceIdx % shuffledSentence.length];
         sentenceIdx++;
@@ -309,6 +382,7 @@ export default function TeamCards({ words, onBack }: TeamCardsProps) {
       newCards.push({
         id: i + 1,
         wordItem: assignedWord,
+        quizQuestion: assignedQuizQuestion,
         points: defaultPoints,
         isOpened: false,
         specialType,
@@ -318,7 +392,7 @@ export default function TeamCards({ words, onBack }: TeamCardsProps) {
 
     setCards(newCards);
     if (soundEnabled) playSuccessSound();
-  }, [eligibleWords, enableSurprises, cardGridCount, defaultPoints, teams, soundEnabled, gameMode, words]);
+  }, [eligibleWords, enableSurprises, cardGridCount, defaultPoints, teams, soundEnabled, gameMode, words, questions]);
 
   useEffect(() => {
     initGame();
@@ -492,6 +566,7 @@ export default function TeamCards({ words, onBack }: TeamCardsProps) {
     if (soundEnabled) playClickSound();
 
     setSelectedCard(card);
+    setSelectedQuizOption(null);
     setResultState('unanswered');
 
     if (card.specialType === 'none') {
@@ -714,6 +789,7 @@ export default function TeamCards({ words, onBack }: TeamCardsProps) {
       case 'reading': return { title: 'ល្បែងអានពាក្យ', icon: BookOpen, color: 'text-blue-500', bg: 'bg-blue-100' };
       case 'sentence': return { title: 'ល្បែងអានល្បះ', icon: FileText, color: 'text-indigo-600', bg: 'bg-indigo-100' };
       case 'search': return { title: 'ល្បែងស្វែងរកពាក្យ', icon: Search, color: 'text-emerald-500', bg: 'bg-emerald-100' };
+      case 'quiz': return { title: 'សំណួរពហុជម្រើស', icon: CheckSquare, color: 'text-purple-600', bg: 'bg-purple-100' };
       case 'mixed': return { title: 'ល្បែងចម្រុះ', icon: Sparkles, color: 'text-purple-600', bg: 'bg-purple-100' };
     }
   };
@@ -928,7 +1004,10 @@ export default function TeamCards({ words, onBack }: TeamCardsProps) {
 
                 <div className="flex items-center gap-2 sm:gap-3 ml-auto">
                   {/* Target Word or Mode Badge displayed on the right */}
-                  {selectedCard.specialType === 'none' && selectedCard.wordItem && (() => {
+                  {selectedCard.specialType === 'none' && (() => {
+                    if (cardModeToRender === 'quiz') {
+                      return null;
+                    }
                     if (cardModeToRender === 'puzzle') {
                       return (
                         <div className="flex items-center gap-1.5 px-3 sm:px-4 py-1 sm:py-1.5 bg-amber-50 border-2 border-amber-400 text-amber-900 rounded-full text-xs sm:text-sm md:text-base font-bold shadow-2xs">
@@ -937,29 +1016,32 @@ export default function TeamCards({ words, onBack }: TeamCardsProps) {
                         </div>
                       );
                     }
-                    return (
-                      <div className={`flex items-center gap-1.5 px-3 sm:px-4 py-1 sm:py-1.5 border-2 rounded-full text-xs sm:text-sm md:text-base font-bold shadow-2xs ${
-                        cardModeToRender === 'sentence'
-                          ? 'bg-indigo-50 border-indigo-400 text-indigo-900'
-                          : cardModeToRender === 'search'
-                          ? 'bg-emerald-50 border-emerald-400 text-emerald-900'
-                          : 'bg-blue-50 border-blue-400 text-blue-900'
-                      }`}>
-                        {cardModeToRender === 'search' ? (
-                          <Search size={16} className="text-emerald-600 shrink-0" strokeWidth={2.5} />
-                        ) : cardModeToRender === 'sentence' ? (
-                          <FileText size={16} className="text-indigo-600 shrink-0" strokeWidth={2.5} />
-                        ) : (
-                          <BookOpen size={16} className="text-blue-500 shrink-0" strokeWidth={2.5} />
-                        )}
-                        <span>
-                          {cardModeToRender === 'search' ? 'ស្វែងរកពាក្យ ៖ ' : cardModeToRender === 'sentence' ? '' : 'អានពាក្យ ៖ '}
-                          <span className="font-black text-sm sm:text-base md:text-lg ml-0.5">
-                            {cardModeToRender === 'sentence' ? formatSentenceText(selectedCard.wordItem.word) : `« ${selectedCard.wordItem.word} »`}
+                    if (selectedCard.wordItem) {
+                      return (
+                        <div className={`flex items-center gap-1.5 px-3 sm:px-4 py-1 sm:py-1.5 border-2 rounded-full text-xs sm:text-sm md:text-base font-bold shadow-2xs ${
+                          cardModeToRender === 'sentence'
+                            ? 'bg-indigo-50 border-indigo-400 text-indigo-900'
+                            : cardModeToRender === 'search'
+                            ? 'bg-emerald-50 border-emerald-400 text-emerald-900'
+                            : 'bg-blue-50 border-blue-400 text-blue-900'
+                        }`}>
+                          {cardModeToRender === 'search' ? (
+                            <Search size={16} className="text-emerald-600 shrink-0" strokeWidth={2.5} />
+                          ) : cardModeToRender === 'sentence' ? (
+                            <FileText size={16} className="text-indigo-600 shrink-0" strokeWidth={2.5} />
+                          ) : (
+                            <BookOpen size={16} className="text-blue-500 shrink-0" strokeWidth={2.5} />
+                          )}
+                          <span>
+                            {cardModeToRender === 'search' ? 'ស្វែងរកពាក្យ ៖ ' : cardModeToRender === 'sentence' ? '' : 'អានពាក្យ ៖ '}
+                            <span className="font-black text-sm sm:text-base md:text-lg ml-0.5">
+                              {cardModeToRender === 'sentence' ? formatSentenceText(selectedCard.wordItem.word) : `« ${selectedCard.wordItem.word} »`}
+                            </span>
                           </span>
-                        </span>
-                      </div>
-                    );
+                        </div>
+                      );
+                    }
+                    return null;
                   })()}
 
                   {timerSeconds > 0 && selectedCard.specialType === 'none' && resultState === 'unanswered' && (
@@ -1248,6 +1330,136 @@ export default function TeamCards({ words, onBack }: TeamCardsProps) {
                     </div>
 
                   </div>
+                ) : cardModeToRender === 'quiz' ? (
+                  /* ======================================================== */
+                  /* CASE 4: MULTIPLE CHOICE QUIZ VIEW (ល្បែងសំណួរពហុជម្រើស) */
+                  /* ======================================================== */
+                  <div className="flex flex-col items-center justify-center gap-5 sm:gap-6 w-full py-6 px-3 sm:px-8 bg-gradient-to-br from-[#6b21a8] via-[#4c1d95] to-[#3b0764] rounded-3xl text-white relative overflow-hidden shadow-2xl my-auto">
+                    
+                    {/* Question White Card Display */}
+                    <div className="w-full max-w-4xl bg-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 border-4 border-purple-200/90 shadow-2xl flex items-center justify-center shrink-0">
+                      <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-purple-950 text-center leading-snug font-sans tracking-wide">
+                        {selectedCard.quizQuestion?.question || 'តើពាក្យមួយណាជាចម្លើយត្រឹមត្រូវ?'}
+                      </h2>
+                    </div>
+
+                    {/* Options Container with Centered Timer */}
+                    <div className="relative w-full max-w-4xl shrink-0">
+                      {/* Options Grid (4 Options with A, B, C, D badges) */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-5">
+                        {selectedCard.quizQuestion?.options.map((optionText, optIdx) => {
+                          const PREFIXES = ['A', 'B', 'C', 'D'];
+                          const prefix = PREFIXES[optIdx] || `${optIdx + 1}`;
+                          const isSelected = selectedQuizOption === optIdx;
+                          const isCorrectOption = optIdx === selectedCard.quizQuestion?.answerIndex;
+
+                          const optionThemes = [
+                            { badgeBg: "bg-[#0284c7]", border: "border-[#0284c7]/40", hover: "hover:border-[#0284c7]" },
+                            { badgeBg: "bg-[#e11d48]", border: "border-[#e11d48]/40", hover: "hover:border-[#e11d48]" },
+                            { badgeBg: "bg-[#059669]", border: "border-[#059669]/40", hover: "hover:border-[#059669]" },
+                            { badgeBg: "bg-[#d97706]", border: "border-[#d97706]/40", hover: "hover:border-[#d97706]" },
+                          ];
+                          const theme = optionThemes[optIdx % optionThemes.length];
+
+                          let optClass = "w-full transition-all text-left flex items-stretch border-3 rounded-2xl sm:rounded-3xl overflow-hidden -skew-x-12 shadow-xl min-h-[64px] sm:min-h-[72px] md:min-h-[80px] ";
+
+                          if (selectedQuizOption !== null) {
+                            if (isCorrectOption) {
+                              optClass += "bg-emerald-50 border-emerald-500 text-emerald-950 font-black ring-4 ring-emerald-400/40";
+                            } else if (isSelected) {
+                              optClass += "bg-rose-50 border-rose-500 text-rose-950 font-black ring-4 ring-rose-400/40";
+                            } else {
+                              optClass += "bg-white/40 border-slate-300/40 opacity-40 cursor-not-allowed text-slate-400";
+                            }
+                          } else {
+                            optClass += `bg-white ${theme.border} ${theme.hover} active:scale-[0.98] cursor-pointer`;
+                          }
+
+                          return (
+                            <button
+                              key={optIdx}
+                              disabled={selectedQuizOption !== null}
+                              onClick={() => {
+                                setSelectedQuizOption(optIdx);
+                                const isCorrect = optIdx === selectedCard.quizQuestion?.answerIndex;
+                                if (isCorrect) {
+                                  if (soundEnabled) playSuccessSound();
+                                  setResultState('correct');
+                                } else {
+                                  if (soundEnabled) playFailSound();
+                                  setResultState('wrong');
+                                }
+                              }}
+                              className={optClass}
+                            >
+                              {/* Left Colored Badge for Option Prefix A, B, C, D */}
+                              <div className={`w-16 sm:w-20 md:w-22 shrink-0 flex items-center justify-center font-black transition-colors ${
+                                selectedQuizOption !== null && isCorrectOption
+                                  ? 'bg-emerald-500 text-white'
+                                  : selectedQuizOption !== null && isSelected
+                                  ? 'bg-rose-500 text-white'
+                                  : selectedQuizOption !== null
+                                  ? 'bg-slate-400 text-white'
+                                  : `${theme.badgeBg} text-white`
+                              }`}>
+                                <span className="skew-x-12 text-xl sm:text-2xl md:text-3xl font-black drop-shadow-xs">
+                                  {prefix}
+                                </span>
+                              </div>
+
+                              {/* Right White Content Area */}
+                              <div className="flex-1 px-4 sm:px-6 md:px-7 py-2.5 sm:py-3.5 flex items-center justify-between bg-white/95">
+                                <span className={`skew-x-12 leading-relaxed select-none text-left flex-1 font-extrabold text-lg sm:text-xl md:text-2xl ${
+                                  selectedQuizOption !== null && isCorrectOption
+                                    ? 'text-emerald-900'
+                                    : selectedQuizOption !== null && isSelected
+                                    ? 'text-rose-900'
+                                    : 'text-slate-900'
+                                }`}>
+                                  {optionText}
+                                </span>
+
+                                {selectedQuizOption !== null && isCorrectOption && (
+                                  <Check size={26} className="skew-x-12 text-emerald-600 shrink-0 ml-2" strokeWidth={3} />
+                                )}
+                                {selectedQuizOption !== null && isSelected && !isCorrectOption && (
+                                  <X size={26} className="skew-x-12 text-rose-600 shrink-0 ml-2" strokeWidth={3} />
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Center Floating Timer Badge matching image.png */}
+                      {timerSeconds > 0 && selectedQuizOption === null && (
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 hidden sm:flex items-center justify-center pointer-events-none">
+                          <div className="relative flex items-center justify-center pointer-events-auto">
+                            <div className="absolute inset-0 rounded-full bg-amber-400/30 scale-125 animate-ping" />
+                            <div className="relative w-20 h-20 md:w-22 md:h-22 rounded-full bg-white border-4 border-amber-400 text-purple-950 flex flex-col items-center justify-center shadow-2xl ring-4 ring-amber-300/50">
+                              <span className="text-xl md:text-2xl font-black font-mono leading-none">{timeLeft}</span>
+                              <span className="text-[9px] font-bold text-stone-500 uppercase tracking-wider">វិនាទី</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Manual Skip button if not yet answered */}
+                    {selectedQuizOption === null && (
+                      <div className="flex items-center justify-center gap-3 text-xs text-purple-200 pt-1">
+                        <button
+                          onClick={() => {
+                            setResultState('wrong');
+                            if (soundEnabled) playFailSound();
+                          }}
+                          className="hover:text-amber-300 active:scale-95 underline cursor-pointer transition-colors"
+                        >
+                          រំលង (០ ពិន្ទុ)
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   /* ======================================================== */
                   /* CASE 4: WORD SEARCH VIEW (ល្បែងស្វែងរកពាក្យ) */
@@ -1476,8 +1688,8 @@ export default function TeamCards({ words, onBack }: TeamCardsProps) {
                     <Award size={16} className="text-amber-600" />
                     <span>ជ្រើសរើសប្រភេទល្បែង ៖</span>
                   </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-                    {(['puzzle', 'reading', 'sentence', 'search', 'mixed'] as const).map(mode => {
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                    {(['puzzle', 'reading', 'sentence', 'search', 'quiz', 'mixed'] as const).map(mode => {
                       const modeInfo = getGameModeLabel(mode);
                       const Icon = modeInfo.icon;
                       const isSelected = gameMode === mode;
