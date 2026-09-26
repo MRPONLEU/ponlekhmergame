@@ -109,12 +109,25 @@ app.post("/api/tug/ping", (req, res) => {
     return res.status(400).json({ error: "Invalid parameters" });
   }
 
-  const room = tugRooms.get(roomId);
+  let room = tugRooms.get(roomId);
+  const now = Date.now();
+
   if (!room) {
-    return res.status(404).json({ error: "Room not found" });
+    room = {
+      roomId,
+      gameMode: 'math',
+      t1Question: null,
+      t2Question: null,
+      t1Connected: false,
+      t2Connected: false,
+      t1LastPing: now,
+      t2LastPing: now,
+      submissions: [],
+      updatedAt: now,
+    };
+    tugRooms.set(roomId, room);
   }
 
-  const now = Date.now();
   if (team === 1) {
     room.t1LastPing = now;
     room.t1Connected = true;

@@ -48,7 +48,7 @@ export default function TabletController() {
           if (isMounted) {
             setConnected(true);
             if (data.gameMode) setGameMode(data.gameMode);
-            if (data.question) setCurrentQuestion(data.question);
+            if (data.question !== undefined) setCurrentQuestion(data.question);
           }
         } else {
           if (isMounted) setConnected(false);
@@ -56,7 +56,7 @@ export default function TabletController() {
       } catch {
         if (isMounted) setConnected(false);
       }
-    }, 600);
+    }, 300);
 
     return () => {
       isMounted = false;
@@ -79,7 +79,13 @@ export default function TabletController() {
 
       if (res.ok) {
         playSuccessSound();
-        setLastSubmitted(ansText);
+        if (gameMode === 'quiz') {
+          const labels = ['ក (A)', 'ខ (B)', 'គ (C)', 'ឃ (D)'];
+          const idx = parseInt(ansText, 10);
+          setLastSubmitted(labels[idx] || ansText);
+        } else {
+          setLastSubmitted(ansText);
+        }
         setInputVal('');
         setTeacherStatusMsg('បានបញ្ជូនចម្លើយរួចរាល់! 🚀');
         setTimeout(() => setTeacherStatusMsg(null), 1500);
@@ -157,7 +163,11 @@ export default function TabletController() {
           {gameMode === 'math' ? (
             <div className="space-y-3">
               <h2 className="text-3xl sm:text-5xl font-black font-mono text-slate-900 tracking-wider">
-                {currentQuestion ? `${currentQuestion.num1} ${currentQuestion.op} ${currentQuestion.num2} = ?` : '៤ + ១០ = ?'}
+                {currentQuestion ? (
+                  currentQuestion.text || `${currentQuestion.num1} ${currentQuestion.op} ${currentQuestion.num2} = ?`
+                ) : (
+                  <span className="text-amber-600 font-bold text-lg animate-pulse">កំពុងភ្ជាប់ទាញយកសំណួរ...</span>
+                )}
               </h2>
 
               {/* Typed Answer Input Box */}
@@ -171,7 +181,7 @@ export default function TabletController() {
           ) : (
             <div className="space-y-2">
               <h2 className="text-xl sm:text-2xl font-black text-slate-900 leading-snug">
-                {currentQuestion?.question || 'ជ្រើសរើសចម្លើយ A, B, C, D ខាងក្រោម៖'}
+                {currentQuestion?.question || <span className="text-amber-600 font-bold text-lg animate-pulse">កំពុងភ្ជាប់ទាញយកសំណួរ...</span>}
               </h2>
             </div>
           )}

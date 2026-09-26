@@ -453,27 +453,66 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
       .catch(err => console.error(err));
   }, [roomId]);
 
-  // Sync Room state to server every 1.5 seconds
-  useEffect(() => {
-    const activeT1Q = gameMode === 'math' ? t1Question : t1QuizQuestion;
-    const activeT2Q = gameMode === 'math' ? t2Question : t2QuizQuestion;
+  const processedSubIdsRef = useRef<Set<string>>(new Set());
 
-    fetch('/api/tug/state', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        roomId,
-        gameMode,
-        t1Question: activeT1Q,
-        t2Question: activeT2Q
-      })
-    }).catch(() => {});
+  // Helper to normalize numbers (converts Khmer numerals like ០១២៣៤៥៦៧៨៩ to 0123456789)
+  const parseNormalizedFloat = (str: string): number => {
+    if (!str) return NaN;
+    const khmerDigits = ['០','១','២','៣','៤','៥','៦','៧','៨','៩'];
+    let normalized = String(str).trim();
+    khmerDigits.forEach((kDigit, index) => {
+      normalized = normalized.split(kDigit).join(index.toString());
+    });
+    return parseFloat(normalized);
+  };
+
+  // Helper to parse quiz choice index from Tablet/keypad input
+  const parseQuizChoiceIndex = useCallback((rawVal: string, options?: string[]): number => {
+    if (rawVal === undefined || rawVal === null) return -1;
+    const s = String(rawVal).trim().toLowerCase();
+
+    if (s === '០' || s === '0' || s === 'a' || s === 'ក') return 0;
+    if (s === '១' || s === '1' || s === 'b' || s === 'ខ') return 1;
+    if (s === '២' || s === '2' || s === 'c' || s === 'គ') return 2;
+    if (s === '៣' || s === '3' || s === 'd' || s === 'ឃ') return 3;
+
+    const num = parseInt(s, 10);
+    if (!isNaN(num) && num >= 0 && num < 4) return num;
+
+    if (options && options.length > 0) {
+      const idx = options.findIndex(opt => opt.trim().toLowerCase() === s);
+      if (idx !== -1) return idx;
+    }
+    return -1;
+  }, []);
+
+  // Sync Room state to server every 1 second
+  useEffect(() => {
+    const syncState = () => {
+      const activeT1Q = gameMode === 'math' ? t1Question : t1QuizQuestion;
+      const activeT2Q = gameMode === 'math' ? t2Question : t2QuizQuestion;
+
+      fetch('/api/tug/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomId,
+          gameMode,
+          t1Question: activeT1Q,
+          t2Question: activeT2Q
+        })
+      }).catch(() => {});
+    };
+
+    syncState();
+    const interval = setInterval(syncState, 1000);
+    return () => clearInterval(interval);
   }, [roomId, gameMode, t1Question, t2Question, t1QuizQuestion, t2QuizQuestion]);
 
   // Submit Answer for Team 1 from Tablet Controller or Keypad
   const submitTeam1WithVal = useCallback((rawVal: string) => {
     if (!t1Question || winner) return;
-    const userVal = parseFloat(rawVal.trim());
+    const userVal = parseNormalizedFloat(rawVal);
     if (isNaN(userVal)) return;
 
     if (Math.abs(userVal - t1Question.answer) < 0.001) {
@@ -502,7 +541,7 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
   // Submit Answer for Team 2 from Tablet Controller or Keypad
   const submitTeam2WithVal = useCallback((rawVal: string) => {
     if (!t2Question || winner) return;
-    const userVal = parseFloat(rawVal.trim());
+    const userVal = parseNormalizedFloat(rawVal);
     if (isNaN(userVal)) return;
 
     if (Math.abs(userVal - t2Question.answer) < 0.001) {
@@ -542,7 +581,14 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
           setT2Connected(!!data.t2Connected);
 
           if (Array.isArray(data.submissions) && data.submissions.length > 0) {
-            data.submissions.forEach((sub: { team: 1 | 2; answer: string; timestamp: number }) => {
+            data.submissions.forEach((sub: { id: string; team: 1 | 2; answer: string; timestamp: number }) => {
+              if (processedSubIdsRef.current.has(sub.id)) return;
+              processedSubIdsRef.current.add(sub.id);
+              if (processedSubIdsRef.current.size > 200) {
+                const arr = Array.from(processedSubIdsRef.current);
+                processedSubIdsRef.current = new Set(arr.slice(100));
+              }
+
               if (sub.timestamp > lastSubRef.current) {
                 lastSubRef.current = sub.timestamp;
               }
@@ -551,15 +597,15 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
                 if (gameMode === 'math') {
                   submitTeam1WithVal(sub.answer);
                 } else if (gameMode === 'quiz') {
-                  const choiceIdx = parseInt(sub.answer, 10);
-                  if (!isNaN(choiceIdx)) submitQuizTeam1(choiceIdx);
+                  const choiceIdx = parseQuizChoiceIndex(sub.answer, t1QuizQuestion?.options);
+                  if (choiceIdx !== -1) submitQuizTeam1(choiceIdx);
                 }
               } else if (sub.team === 2) {
                 if (gameMode === 'math') {
                   submitTeam2WithVal(sub.answer);
                 } else if (gameMode === 'quiz') {
-                  const choiceIdx = parseInt(sub.answer, 10);
-                  if (!isNaN(choiceIdx)) submitQuizTeam2(choiceIdx);
+                  const choiceIdx = parseQuizChoiceIndex(sub.answer, t2QuizQuestion?.options);
+                  if (choiceIdx !== -1) submitQuizTeam2(choiceIdx);
                 }
               }
             });
@@ -574,7 +620,7 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
       isMounted = false;
       clearInterval(interval);
     };
-  }, [roomId, gameMode, submitTeam1WithVal, submitTeam2WithVal]);
+  }, [roomId, gameMode, submitTeam1WithVal, submitTeam2WithVal, submitQuizTeam1, submitQuizTeam2, t1QuizQuestion, t2QuizQuestion, parseQuizChoiceIndex]);
 
   // Keypad Click Handlers
   const handleT1Key = (val: string) => {
