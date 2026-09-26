@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import QRCode from 'qrcode';
 import { 
   Home, 
   Settings, 
@@ -20,7 +21,11 @@ import {
   Layers,
   ChevronDown,
   BookOpen,
-  FileQuestion
+  FileQuestion,
+  Smartphone,
+  QrCode,
+  Copy,
+  Wifi
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
@@ -103,6 +108,28 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
   // Gameplay State
   const [pullBalance, setPullBalance] = useState<number>(0); // -target to +target
   const [winner, setWinner] = useState<'team1' | 'team2' | 'draw' | null>(null);
+
+  // Room Sync & QR Code Controller State
+  const [roomId] = useState<string>(() => {
+    try {
+      const saved = sessionStorage.getItem('tug_room_id');
+      if (saved) return saved;
+      const newId = 'TUG-' + Math.floor(1000 + Math.random() * 9000);
+      sessionStorage.setItem('tug_room_id', newId);
+      return newId;
+    } catch {
+      return 'TUG-' + Math.floor(1000 + Math.random() * 9000);
+    }
+  });
+
+  const [isQrModalOpen, setIsQrModalOpen] = useState<boolean>(false);
+  const [qrT1, setQrT1] = useState<string>('');
+  const [qrT2, setQrT2] = useState<string>('');
+  const [t1Connected, setT1Connected] = useState<boolean>(false);
+  const [t2Connected, setT2Connected] = useState<boolean>(false);
+  const [copiedT1, setCopiedT1] = useState<boolean>(false);
+  const [copiedT2, setCopiedT2] = useState<boolean>(false);
+  const lastSubRef = useRef<number>(Date.now());
 
   // Separate questions for each team
   const [t1Question, setT1Question] = useState<MathQuestion | null>(null);
@@ -410,12 +437,43 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
     }
   };
 
-  // Submit Answer for Team 1 (Left / Blue)
-  const submitTeam1 = () => {
+  // Generate QR Code images on mount or when roomId changes
+  useEffect(() => {
+    const origin = window.location.origin;
+    const pathname = window.location.pathname;
+    const url1 = `${origin}${pathname}?mode=controller&room=${roomId}&team=1`;
+    const url2 = `${origin}${pathname}?mode=controller&room=${roomId}&team=2`;
+
+    QRCode.toDataURL(url1, { width: 240, margin: 2, color: { dark: '#1d4ed8', light: '#ffffff' } })
+      .then(url => setQrT1(url))
+      .catch(err => console.error(err));
+
+    QRCode.toDataURL(url2, { width: 240, margin: 2, color: { dark: '#be123c', light: '#ffffff' } })
+      .then(url => setQrT2(url))
+      .catch(err => console.error(err));
+  }, [roomId]);
+
+  // Sync Room state to server every 1.5 seconds
+  useEffect(() => {
+    const activeT1Q = gameMode === 'math' ? t1Question : t1QuizQuestion;
+    const activeT2Q = gameMode === 'math' ? t2Question : t2QuizQuestion;
+
+    fetch('/api/tug/state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        roomId,
+        gameMode,
+        t1Question: activeT1Q,
+        t2Question: activeT2Q
+      })
+    }).catch(() => {});
+  }, [roomId, gameMode, t1Question, t2Question, t1QuizQuestion, t2QuizQuestion]);
+
+  // Submit Answer for Team 1 from Tablet Controller or Keypad
+  const submitTeam1WithVal = useCallback((rawVal: string) => {
     if (!t1Question || winner) return;
-    const raw = t1Input.trim();
-    if (!raw) return;
-    const userVal = parseFloat(raw);
+    const userVal = parseFloat(rawVal.trim());
     if (isNaN(userVal)) return;
 
     if (Math.abs(userVal - t1Question.answer) < 0.001) {
@@ -426,7 +484,7 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
       setLastPullTeam('team1');
       setLastWinnerTeam('team1');
       setTimeout(() => setLastWinnerTeam(null), 1200);
-      
+
       const newBalance = Math.max(-targetWinPulls, pullBalance - 1);
       setPullBalance(newBalance);
       checkPullWin(newBalance);
@@ -439,14 +497,12 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
       setTimeout(() => setT1Shake(false), 500);
       setT1Input('');
     }
-  };
+  }, [t1Question, winner, soundEnabled, pullBalance, targetWinPulls, checkPullWin, generateQuestion]);
 
-  // Submit Answer for Team 2 (Right / Red)
-  const submitTeam2 = () => {
+  // Submit Answer for Team 2 from Tablet Controller or Keypad
+  const submitTeam2WithVal = useCallback((rawVal: string) => {
     if (!t2Question || winner) return;
-    const raw = t2Input.trim();
-    if (!raw) return;
-    const userVal = parseFloat(raw);
+    const userVal = parseFloat(rawVal.trim());
     if (isNaN(userVal)) return;
 
     if (Math.abs(userVal - t2Question.answer) < 0.001) {
@@ -470,7 +526,55 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
       setTimeout(() => setT2Shake(false), 500);
       setT2Input('');
     }
-  };
+  }, [t2Question, winner, soundEnabled, pullBalance, targetWinPulls, checkPullWin, generateQuestion]);
+
+  // Poll for incoming tablet submissions every 250ms
+  useEffect(() => {
+    let isMounted = true;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/tug/submissions?roomId=${roomId}&since=${lastSubRef.current}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (!isMounted) return;
+
+          setT1Connected(!!data.t1Connected);
+          setT2Connected(!!data.t2Connected);
+
+          if (Array.isArray(data.submissions) && data.submissions.length > 0) {
+            data.submissions.forEach((sub: { team: 1 | 2; answer: string; timestamp: number }) => {
+              if (sub.timestamp > lastSubRef.current) {
+                lastSubRef.current = sub.timestamp;
+              }
+
+              if (sub.team === 1) {
+                if (gameMode === 'math') {
+                  submitTeam1WithVal(sub.answer);
+                } else if (gameMode === 'quiz') {
+                  const choiceIdx = parseInt(sub.answer, 10);
+                  if (!isNaN(choiceIdx)) submitQuizTeam1(choiceIdx);
+                }
+              } else if (sub.team === 2) {
+                if (gameMode === 'math') {
+                  submitTeam2WithVal(sub.answer);
+                } else if (gameMode === 'quiz') {
+                  const choiceIdx = parseInt(sub.answer, 10);
+                  if (!isNaN(choiceIdx)) submitQuizTeam2(choiceIdx);
+                }
+              }
+            });
+          }
+        }
+      } catch {
+        // Ignore background poll errors
+      }
+    }, 250);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [roomId, gameMode, submitTeam1WithVal, submitTeam2WithVal]);
 
   // Keypad Click Handlers
   const handleT1Key = (val: string) => {
@@ -486,7 +590,7 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
         return prev + '.';
       });
     } else if (val === 'submit') {
-      submitTeam1();
+      submitTeam1WithVal(t1Input);
     } else {
       if (t1Input.length < 8) {
         setT1Input(prev => prev === '0' ? val : prev + val);
@@ -507,7 +611,7 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
         return prev + '.';
       });
     } else if (val === 'submit') {
-      submitTeam2();
+      submitTeam2WithVal(t2Input);
     } else {
       if (t2Input.length < 8) {
         setT2Input(prev => prev === '0' ? val : prev + val);
@@ -577,7 +681,7 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
         if (/^[0-9]$/.test(digit)) {
           handleT2Key(digit);
         } else if (e.code === 'NumpadEnter') {
-          submitTeam2();
+          submitTeam2WithVal(t2Input);
         } else if (e.code === 'NumpadDecimal') {
           handleT2Key('.');
         } else if (e.code === 'Delete') {
@@ -597,7 +701,7 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
       } else if (e.code === 'Period' || e.key === '.') {
         handleT1Key('.');
       } else if (e.code === 'Enter') {
-        submitTeam1();
+        submitTeam1WithVal(t1Input);
       } else if (e.code === 'KeyC') {
         handleT1Key('C');
       } else if (e.code === 'Backspace') {
@@ -767,15 +871,28 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
             </div>
           </div>
 
-          {/* Right Toolbar - Settings button */}
+          {/* Right Toolbar - QR Tablet button & Settings button */}
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                if (soundEnabled) playClickSound();
+                setIsQrModalOpen(true);
+              }}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 active:scale-95 text-emerald-700 font-black rounded-full text-xs sm:text-sm transition-all border border-emerald-200 shadow-xs cursor-pointer"
+              title="ភ្ជាប់ Tablet A និង B សម្រាប់ចុចចម្លើយបញ្ជាពីចម្ងាយ (QR Code)"
+            >
+              <QrCode size={18} className="text-emerald-600" />
+              <span className="hidden sm:inline">ភ្ជាប់ Tablet (QR)</span>
+              <span className="sm:hidden">QR</span>
+            </button>
+
             <button
               onClick={() => {
                 if (soundEnabled) playClickSound();
                 setIsSettingsOpen(true);
               }}
               id="btn-tug-settings"
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-indigo-50 hover:bg-indigo-100 active:scale-95 text-indigo-700 font-black rounded-full text-sm transition-all border border-indigo-200 shadow-xs cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 bg-indigo-50 hover:bg-indigo-100 active:scale-95 text-indigo-700 font-black rounded-full text-xs sm:text-sm transition-all border border-indigo-200 shadow-xs cursor-pointer"
               title="ការកំណត់ល្បែង"
             >
               <Settings size={18} className="text-indigo-600" />
@@ -1965,6 +2082,124 @@ export default function MathTugOfWar({ onBack, topics = DEFAULT_TOPICS, activeTo
         )}
       </AnimatePresence>
 
+      {/* ================= 3.5 TABLET CONTROLLER QR CODE CONNECT MODAL ================= */}
+      <AnimatePresence>
+        {isQrModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-xs">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border-2 border-slate-200 overflow-hidden relative"
+            >
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-black shrink-0">
+                    <Smartphone size={22} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-black text-slate-800">
+                      តភ្ជាប់ Tablet បញ្ជាពីចម្ងាយ (QR Code Controllers)
+                    </h3>
+                    <p className="text-xs text-slate-500 font-bold">
+                      ស្កែន QR Code ដោយប្រើកាមេរ៉ា Tablet A សម្រាប់ក្រុមទី១ និង Tablet B សម្រាប់ក្រុមទី២
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setIsQrModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center cursor-pointer transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* QR Codes Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                
+                {/* Team 1 / Tablet A */}
+                <div className="bg-blue-50/60 rounded-2xl p-4 border-2 border-blue-200 flex flex-col items-center text-center space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 bg-blue-600 text-white rounded-full text-xs font-black">
+                      ក្រុមទី ១ (Tablet A)
+                    </span>
+                    <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 ${
+                      t1Connected ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'
+                    }`}>
+                      <span className={`w-2 h-2 rounded-full ${t1Connected ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                      {t1Connected ? 'បានតភ្ជាប់' : 'រង់ចាំ...'}
+                    </span>
+                  </div>
+
+                  {qrT1 ? (
+                    <img src={qrT1} alt="QR Team 1" className="w-44 h-44 rounded-xl border-2 border-blue-300 shadow-md bg-white p-1" />
+                  ) : (
+                    <div className="w-44 h-44 rounded-xl bg-slate-200 animate-pulse flex items-center justify-center text-xs font-bold text-slate-400">
+                      កំពុងបង្កើត QR...
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      const url = `${window.location.origin}${window.location.pathname}?mode=controller&room=${roomId}&team=1`;
+                      navigator.clipboard.writeText(url);
+                      setCopiedT1(true);
+                      setTimeout(() => setCopiedT1(false), 2000);
+                    }}
+                    className="w-full py-2 bg-white hover:bg-blue-100 active:scale-95 text-blue-700 font-bold text-xs rounded-xl border border-blue-300 flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                  >
+                    <Copy size={14} />
+                    <span>{copiedT1 ? 'បានចម្លង Link!' : 'ចម្លង Link ក្រុមទី ១'}</span>
+                  </button>
+                </div>
+
+                {/* Team 2 / Tablet B */}
+                <div className="bg-rose-50/60 rounded-2xl p-4 border-2 border-rose-200 flex flex-col items-center text-center space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 bg-rose-600 text-white rounded-full text-xs font-black">
+                      ក្រុមទី ២ (Tablet B)
+                    </span>
+                    <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 ${
+                      t2Connected ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'
+                    }`}>
+                      <span className={`w-2 h-2 rounded-full ${t2Connected ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                      {t2Connected ? 'បានតភ្ជាប់' : 'រង់ចាំ...'}
+                    </span>
+                  </div>
+
+                  {qrT2 ? (
+                    <img src={qrT2} alt="QR Team 2" className="w-44 h-44 rounded-xl border-2 border-rose-300 shadow-md bg-white p-1" />
+                  ) : (
+                    <div className="w-44 h-44 rounded-xl bg-slate-200 animate-pulse flex items-center justify-center text-xs font-bold text-slate-400">
+                      កំពុងបង្កើត QR...
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      const url = `${window.location.origin}${window.location.pathname}?mode=controller&room=${roomId}&team=2`;
+                      navigator.clipboard.writeText(url);
+                      setCopiedT2(true);
+                      setTimeout(() => setCopiedT2(false), 2000);
+                    }}
+                    className="w-full py-2 bg-white hover:bg-rose-100 active:scale-95 text-rose-700 font-bold text-xs rounded-xl border border-rose-300 flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                  >
+                    <Copy size={14} />
+                    <span>{copiedT2 ? 'បានចម្លង Link!' : 'ចម្លង Link ក្រុមទី ២'}</span>
+                  </button>
+                </div>
+
+              </div>
+
+              {/* Footer Note */}
+              <div className="mt-4 pt-3 border-t border-slate-100 text-center text-xs text-slate-500 font-bold">
+                💡 គន្លឹះ ៖ ពេល Tablet A និង B ស្កែន QR ខាងលើ សិស្សអាចចុចចម្លើយនៅលើ Tablet រៀងៗខ្លួន ហើយចម្លើយនឹងត្រូវទាញព្រ័ត្រនៅលើអេក្រង់ធំភ្លាមៗ!
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* ================= 4. VICTORY CELEBRATION MODAL ================= */}
       <AnimatePresence>

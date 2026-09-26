@@ -14,10 +14,17 @@ import MathFinger from './components/MathFinger';
 import MysteryBox from './components/MysteryBox';
 import WordGrab from './components/WordGrab';
 import MathTugOfWar from './components/MathTugOfWar';
+import TabletController from './components/TabletController';
 import { AnimatePresence, motion } from 'motion/react';
 import { isSentenceItem } from './utils/khmerSplit';
 
 export default function App() {
+  // If accessed via QR code on a Tablet controller (e.g. ?mode=controller&room=...&team=1)
+  const isControllerMode = new URLSearchParams(window.location.search).get('mode') === 'controller';
+  if (isControllerMode) {
+    return <TabletController />;
+  }
+
   const [currentView, setCurrentView] = React.useState<ViewState>('dashboard');
   
   // Persistent Topics in LocalStorage

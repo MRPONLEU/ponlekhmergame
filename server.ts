@@ -29,6 +29,169 @@ if (apiKey) {
 app.use(express.json());
 app.use(express.static(path.join(process.cwd(), "public")));
 
+// ========================================================
+// Tug of War Real-time Remote Controller Sync Store & APIs
+// ========================================================
+interface TugSubmission {
+  id: string;
+  team: 1 | 2;
+  answer: string;
+  timestamp: number;
+}
+
+interface TugRoomState {
+  roomId: string;
+  gameMode: 'math' | 'quiz';
+  t1Question: any;
+  t2Question: any;
+  t1Connected: boolean;
+  t2Connected: boolean;
+  t1LastPing: number;
+  t2LastPing: number;
+  submissions: TugSubmission[];
+  updatedAt: number;
+}
+
+const tugRooms = new Map<string, TugRoomState>();
+
+// Create or update room state
+app.post("/api/tug/state", (req, res) => {
+  const { roomId, gameMode, t1Question, t2Question } = req.body;
+  if (!roomId) {
+    return res.status(400).json({ error: "roomId is required" });
+  }
+
+  let room = tugRooms.get(roomId);
+  const now = Date.now();
+
+  if (!room) {
+    room = {
+      roomId,
+      gameMode: gameMode || 'math',
+      t1Question: t1Question || null,
+      t2Question: t2Question || null,
+      t1Connected: false,
+      t2Connected: false,
+      t1LastPing: 0,
+      t2LastPing: 0,
+      submissions: [],
+      updatedAt: now,
+    };
+    tugRooms.set(roomId, room);
+  } else {
+    if (gameMode !== undefined) room.gameMode = gameMode;
+    if (t1Question !== undefined) room.t1Question = t1Question;
+    if (t2Question !== undefined) room.t2Question = t2Question;
+    room.updatedAt = now;
+  }
+
+  room.t1Connected = now - room.t1LastPing < 8000;
+  room.t2Connected = now - room.t2LastPing < 8000;
+
+  res.json({
+    success: true,
+    room: {
+      roomId: room.roomId,
+      gameMode: room.gameMode,
+      t1Question: room.t1Question,
+      t2Question: room.t2Question,
+      t1Connected: room.t1Connected,
+      t2Connected: room.t2Connected,
+      submissionsCount: room.submissions.length,
+    }
+  });
+});
+
+// Ping endpoint for controllers
+app.post("/api/tug/ping", (req, res) => {
+  const { roomId, team } = req.body;
+  if (!roomId || (team !== 1 && team !== 2)) {
+    return res.status(400).json({ error: "Invalid parameters" });
+  }
+
+  const room = tugRooms.get(roomId);
+  if (!room) {
+    return res.status(404).json({ error: "Room not found" });
+  }
+
+  const now = Date.now();
+  if (team === 1) {
+    room.t1LastPing = now;
+    room.t1Connected = true;
+  } else {
+    room.t2LastPing = now;
+    room.t2Connected = true;
+  }
+
+  res.json({
+    success: true,
+    gameMode: room.gameMode,
+    question: team === 1 ? room.t1Question : room.t2Question,
+  });
+});
+
+// Submit answer endpoint for Tablet controllers
+app.post("/api/tug/submit", (req, res) => {
+  const { roomId, team, answer } = req.body;
+  if (!roomId || (team !== 1 && team !== 2) || answer === undefined) {
+    return res.status(400).json({ error: "Invalid parameters" });
+  }
+
+  let room = tugRooms.get(roomId);
+  if (!room) {
+    room = {
+      roomId,
+      gameMode: 'math',
+      t1Question: null,
+      t2Question: null,
+      t1Connected: false,
+      t2Connected: false,
+      t1LastPing: Date.now(),
+      t2LastPing: Date.now(),
+      submissions: [],
+      updatedAt: Date.now(),
+    };
+    tugRooms.set(roomId, room);
+  }
+
+  const sub: TugSubmission = {
+    id: Math.random().toString(36).substring(2, 9),
+    team,
+    answer: String(answer),
+    timestamp: Date.now(),
+  };
+
+  room.submissions.push(sub);
+  if (room.submissions.length > 50) {
+    room.submissions.shift();
+  }
+
+  res.json({ success: true, submissionId: sub.id });
+});
+
+// Main screen fetches pending submissions
+app.get("/api/tug/submissions", (req, res) => {
+  const { roomId, since } = req.query;
+  if (!roomId) {
+    return res.status(400).json({ error: "roomId is required" });
+  }
+
+  const room = tugRooms.get(String(roomId));
+  if (!room) {
+    return res.json({ submissions: [], t1Connected: false, t2Connected: false });
+  }
+
+  const sinceTime = Number(since) || 0;
+  const newSubs = room.submissions.filter(s => s.timestamp > sinceTime);
+
+  const now = Date.now();
+  res.json({
+    submissions: newSubs,
+    t1Connected: now - room.t1LastPing < 8000,
+    t2Connected: now - room.t2LastPing < 8000,
+  });
+});
+
 // API: Generate Word list based on a topic or query
 app.post("/api/ai/generate-words", async (req, res) => {
   if (!ai) {
